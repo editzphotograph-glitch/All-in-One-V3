@@ -38,8 +38,8 @@ module.exports = {
   },
 
   DASHBOARD: {
-    enabled: false, // enable or disable dashboard
-    baseURL: "http://localhost:8080", // base url
+    enabled: true, // enable or disable dashboard
+    baseURL: "https://all-in-one-v3-k4mg.onrender.com", // base url
     failureURL: "http://localhost:8080", // failure redirect url
     port: "8080", // port to run the bot on
   },
