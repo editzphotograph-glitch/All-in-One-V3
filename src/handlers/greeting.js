@@ -107,7 +107,7 @@ async function sendWelcome(member, inviterData = {}) {
   const response = await buildGreeting(member, "WELCOME", config, inviterData);
 
   await channel.send({
-    content: `${member:mention} ${response.content || ""}`,
+    content: `${member.toString()} ${response.content || ""}`,
     embeds: response.embeds || [],
     allowedMentions: { users: [member.id] },
   });
@@ -129,7 +129,7 @@ async function sendFarewell(member, inviterData = {}) {
   const response = await buildGreeting(member, "FAREWELL", config, inviterData);
 
   await channel.send({
-    content: `${member:mention} ${response.content || ""}`,
+    content: `${member.toString()} ${response.content || ""}`,
     embeds: response.embeds || [],
     allowedMentions: { users: [member.id] },
   });
