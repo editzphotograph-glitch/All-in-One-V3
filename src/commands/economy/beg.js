@@ -9,7 +9,7 @@ module.exports = {
   name: "beg",
   description: "beg from someone",
   category: "ECONOMY",
-  cooldown: 21600,
+  cooldown: 300,
   botPermissions: ["EmbedLinks"],
   command: {
     enabled: true,
@@ -19,9 +19,10 @@ module.exports = {
   },
 
   async messageRun(message, args) {
-    const requiredRole = "Begger"; // change to your role name or use role ID
-    if (!message.member.roles.cache.some(r => r.name === requiredRole || r.id === requiredRole)) {
-      return message.safeReply(❌ You must have the **${requiredRole}** role to use this command.);
+    const requiredRoleId = "1426799301480157226"; // replace with your role ID
+
+    if (!message.member.roles.cache.has(requiredRoleId)) {
+      return message.safeReply(`❌ You don't have role to use this command.`);
     }
 
     const response = await beg(message.author);
@@ -29,10 +30,11 @@ module.exports = {
   },
 
   async interactionRun(interaction) {
-    const requiredRole = "1426799301480157226";
-    if (!interaction.member.roles.cache.some(r => r.name === requiredRole || r.id === requiredRole)) {
+    const requiredRoleId = "1426799301480157226"; // replace with your role ID
+
+    if (!interaction.member.roles.cache.has(requiredRoleId)) {
       return interaction.followUp({
-        content: ❌ You must have the **${requiredRole}** role to use this command.,
+        content: `❌ You don't have role to use this command.`,
         ephemeral: true,
       });
     }
@@ -43,7 +45,7 @@ module.exports = {
 };
 
 async function beg(user) {
-  let users = [
+  const donors = [
     "PewDiePie",
     "T-Series",
     "Sans",
@@ -72,7 +74,6 @@ async function beg(user) {
     "Joe Mama",
   ];
 
-  // Fixed random range calculation
   const amount =
     Math.floor(Math.random() * (ECONOMY.MAX_BEG_AMOUNT - ECONOMY.MIN_BEG_AMOUNT + 1)) +
     ECONOMY.MIN_BEG_AMOUNT;
@@ -83,10 +84,10 @@ async function beg(user) {
 
   const embed = new EmbedBuilder()
     .setColor(EMBED_COLORS.BOT_EMBED)
-    .setAuthor({ name: ${user.username}, iconURL: user.displayAvatarURL() })
+    .setAuthor({ name: user.username, iconURL: user.displayAvatarURL() })
     .setDescription(
-      **${users[Math.floor(Math.random() * users.length)]}** donated you **${amount}** ${ECONOMY.CURRENCY}\n +
-        **Updated Balance:** **${userDb.coins}** ${ECONOMY.CURRENCY}
+      `**${donors[Math.floor(Math.random() * donors.length)]}** donated you **${amount}** ${ECONOMY.CURRENCY}\n` +
+        `**Updated Balance:** **${userDb.coins}** ${ECONOMY.CURRENCY}`
     );
 
   return { embeds: [embed] };
