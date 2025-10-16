@@ -56,7 +56,7 @@ const parse = async (content, member, inviterData = {}) => {
 const buildGreeting = async (member, type, config, inviterData) => {
   if (!config) return;
   let content = "";
-  content += `${member.toString()} `;
+  content += `${member:mention} `;
 
   // build content
   if (config.content) content = await parse(config.content, member, inviterData);
@@ -107,7 +107,7 @@ async function sendWelcome(member, inviterData = {}) {
   const response = await buildGreeting(member, "WELCOME", config, inviterData);
 
   await channel.send({
-    content: `${member.toString()} ${response.content || ""}`,
+    content: `${member:mention} ${response.content || ""}`,
     embeds: response.embeds || [],
     allowedMentions: { users: [member.id] },
   });
@@ -129,7 +129,7 @@ async function sendFarewell(member, inviterData = {}) {
   const response = await buildGreeting(member, "FAREWELL", config, inviterData);
 
   await channel.send({
-    content: `${member.toString()} ${response.content || ""}`,
+    content: `${member:mention} ${response.content || ""}`,
     embeds: response.embeds || [],
     allowedMentions: { users: [member.id] },
   });
