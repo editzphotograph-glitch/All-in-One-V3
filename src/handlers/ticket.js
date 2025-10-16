@@ -261,7 +261,7 @@ async function handleTicketOpen(interaction) {
         .setStyle(ButtonStyle.Primary)
     );
 
-    const sent = await tktChannel.send({ content: user.toString(), embeds: [embed], components: [buttonsRow] });
+    const sent = await tktChannel.send({ content: user.toString(), embeds: [embed], components: [buttonsRow], allowedMentions: { users: [user.id] } });
 
     const dmEmbed = new EmbedBuilder()
       .setColor(TICKET.CREATE_EMBED)
