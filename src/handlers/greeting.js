@@ -106,9 +106,11 @@ async function sendWelcome(member, inviterData = {}) {
   // build welcome message
   const response = await buildGreeting(member, "WELCOME", config, inviterData);
 
-  channel.safeSend(response);
+  channel.safeSend({
+    ...response,
+    allowedMentions: { users: [member.id] }, // allows this member to be pinged
+  });
 }
-
 /**
  * Send farewell message
  * @param {import('discord.js').GuildMember} member
