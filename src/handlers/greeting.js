@@ -55,7 +55,7 @@ const parse = async (content, member, inviterData = {}) => {
  */
 const buildGreeting = async (member, type, config, inviterData) => {
   if (!config) return;
-  let content;
+  let content = "";
   content += `${member.toString()} `;
 
   // build content
