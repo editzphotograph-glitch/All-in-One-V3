@@ -233,11 +233,14 @@ async function handleTicketOpen(interaction) {
       });
     }
 
+    const CATEGORY_ID = "1428441760933351444";
+
     const tktChannel = await guild.channels.create({
       name: `tіcket-${ticketNumber}`,
       type: ChannelType.GuildText,
       topic: `tіcket|${user.id}|${catName || "Default"}`,
       permissionOverwrites,
+      parent: CATEGORY_ID,
     });
 
     const embed = new EmbedBuilder()
