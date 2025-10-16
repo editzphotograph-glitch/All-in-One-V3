@@ -261,7 +261,9 @@ async function handleTicketOpen(interaction) {
         .setStyle(ButtonStyle.Primary)
     );
 
-    const sent = await tktChannel.send({ content: user.toString(), embeds: [embed], components: [buttonsRow], allowedMentions: { users: [user.id] } });
+    const MOD_ROLE_ID = "1426842696969883648";
+
+    const sent = await tktChannel.send({ content: `${user.toString()} <@&${MOD_ROLE_ID}>`, embeds: [embed], components: [buttonsRow], allowedMentions: { users: [user.id], roles: [MOD_ROLE_ID], } });
 
     const dmEmbed = new EmbedBuilder()
       .setColor(TICKET.CREATE_EMBED)
