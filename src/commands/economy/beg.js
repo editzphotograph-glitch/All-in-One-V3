@@ -17,7 +17,7 @@ module.exports = {
   slashCommand: {
     enabled: true,
   },
-  {
+  
   
   async messageRun(message, args) {
     const allowedUserId = "1380834797630259322"; // ✅ only this user can use the command
@@ -36,6 +36,10 @@ module.exports = {
     if (interaction.user.id !== allowedUserId) {
       return interaction.followUp("❌ You don't have permission to use this command.");
     }
+      const response = await beg(interaction.user);
+    await interaction.followUp(response);
+  },
+};
 
 async function beg(user) {
   const donors = [
