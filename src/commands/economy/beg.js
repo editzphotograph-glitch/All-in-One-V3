@@ -18,17 +18,7 @@ module.exports = {
     enabled: true,
   },
   {
-  async messageRun(message, args) {
-    const allowedUserId = "1380834797630259322"; // ✅ Your user ID
-
-    if (!message.member.roles.cache.has(requiredRoleId)) {
-      return message.safeReply(`❌ You don't have role to use this command.`);
-    
-
-    const response = await beg(message.author);
-    await message.safeReply(response);
-  },
-  {
+  
   async messageRun(message, args) {
   const allowedUserId = "1380834797630259322"; // ✅ Your user ID
 
@@ -39,7 +29,7 @@ module.exports = {
 
     const response = await beg(interaction.user);
     await interaction.followUp(response);
-  },
+ 
 };
 
 async function beg(user) {
