@@ -20,19 +20,30 @@ module.exports = {
   
   
   async messageRun(message, args) {
-    const allowedUserId = "1380834797630259322";
-    if (message.author.id !== allowedUserId) 
+    const allowedUserId = "1380834797630259322"; // your specified user ID
+
+    // Check user access
+    if (message.author.id !== allowedUserId) {
+      return message.safeReply("❌ You are not allowed to use this command.");
+    }
+
     const response = await beg(message.author);
     await message.safeReply(response);
   },
 
   async interactionRun(interaction) {
-    const allowedUserId = "1380834797630259322";
-    if (message.author.id !== allowedUserId) 
+    const allowedUserId = "1380834797630259322"; // your specified user ID
+
+    // Check user access
+    if (interaction.user.id !== allowedUserId) {
+      return interaction.followUp({ content: "❌ You are not allowed to use this command.", ephemeral: true });
+    }
+
     const response = await beg(interaction.user);
     await interaction.followUp(response);
   },
 };
+
 
 async function beg(user) {
   const donors = [
