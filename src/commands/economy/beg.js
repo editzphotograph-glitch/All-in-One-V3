@@ -9,7 +9,7 @@ module.exports = {
   name: "beg",
   description: "beg from someone",
   category: "ECONOMY",
-  cooldown: 0,
+  cooldown: 15,
   botPermissions: ["EmbedLinks"],
   command: {
     enabled: true,
@@ -20,17 +20,22 @@ module.exports = {
   {
   
   async messageRun(message, args) {
-  const allowedUserId = "1380834797630259322"; // ✅ Your user ID
+    const allowedUserId = "1380834797630259322"; // ✅ only this user can use the command
 
-  if (message.author.id !== allowedUserId) {
-    return message.safeReply(`❌ You are not allowed to use this command.`);
-  
-  
+    if (message.author.id !== allowedUserId) {
+      return message.safeReply("❌ You don't have permission to use this command.");
+    }
 
-    const response = await beg(interaction.user);
-    await interaction.followUp(response);
- 
-};
+    const response = await beg(message.author);
+    await message.safeReply(response);
+  },
+
+  async interactionRun(interaction) {
+    const allowedUserId = "1380834797630259322"; // ✅ same restriction for slash command
+
+    if (interaction.user.id !== allowedUserId) {
+      return interaction.followUp("❌ You don't have permission to use this command.");
+    }
 
 async function beg(user) {
   const donors = [
