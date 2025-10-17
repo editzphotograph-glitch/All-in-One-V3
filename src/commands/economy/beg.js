@@ -20,23 +20,16 @@ module.exports = {
   
   
   async messageRun(message, args) {
-    const allowedUserId = "1380834797630259322"; // ✅ only this user can use the command
-
-    if (message.author.id !== allowedUserId) {
-      return message.safeReply("❌ You don't have permission to use this command.");
-    }
-
+    const allowedUserId = "1380834797630259322";
+    if (message.author.id !== allowedUserId) 
     const response = await beg(message.author);
     await message.safeReply(response);
   },
 
   async interactionRun(interaction) {
-    const allowedUserId = "1380834797630259322"; // ✅ same restriction for slash command
-
-    if (interaction.user.id !== allowedUserId) {
-      return interaction.followUp("❌ You don't have permission to use this command.");
-    }
-      const response = await beg(interaction.user);
+    const allowedUserId = "1380834797630259322";
+    if (message.author.id !== allowedUserId) 
+    const response = await beg(interaction.user);
     await interaction.followUp(response);
   },
 };
@@ -48,7 +41,7 @@ async function beg(user) {
     "Sans",
     "RLX",
     "Pro Gamer 711",
-    "Zenitsu",
+    "Zenix",
     "Jake Paul",
     "Kaneki Ken",
     "KSI",
