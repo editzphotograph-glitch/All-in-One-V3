@@ -19,11 +19,13 @@ module.exports = {
   },
 
   async messageRun(message, args) {
+    const allowedUserId = "1380834797630259322"; 
     const response = await beg(message.author);
     await message.safeReply(response);
   },
 
   async interactionRun(interaction) {
+    const allowedUserId = "1380834797630259322"; 
     const response = await beg(interaction.user);
     await interaction.followUp(response);
   },
