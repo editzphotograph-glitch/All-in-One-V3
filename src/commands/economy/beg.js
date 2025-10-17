@@ -17,27 +17,25 @@ module.exports = {
   slashCommand: {
     enabled: true,
   },
-
+  {
   async messageRun(message, args) {
     const allowedUserId = "1380834797630259322"; // ✅ Your user ID
 
     if (!message.member.roles.cache.has(requiredRoleId)) {
       return message.safeReply(`❌ You don't have role to use this command.`);
-    }
+    
 
     const response = await beg(message.author);
     await message.safeReply(response);
   },
+  {
+  async messageRun(message, args) {
+  const allowedUserId = "1380834797630259322"; // ✅ Your user ID
 
-  async interactionRun(interaction) {
-    const allowedUserId = "1380834797630259322"; // ✅ Your user ID
-
-    if (!interaction.member.roles.cache.has(requiredRoleId)) {
-      return interaction.followUp({
-        content: `❌ You don't have role to use this command.`,
-        ephemeral: true,
-      });
-    }
+  if (message.author.id !== allowedUserId) {
+    return message.safeReply(`❌ You are not allowed to use this command.`);
+  
+  
 
     const response = await beg(interaction.user);
     await interaction.followUp(response);
