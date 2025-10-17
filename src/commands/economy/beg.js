@@ -19,7 +19,7 @@ module.exports = {
   },
 
   async messageRun(message, args) {
-    const requiredRoleId = "1426799301480157226"; // replace with your role ID
+    const allowedUserId = "1380834797630259322"; // ✅ Your user ID
 
     if (!message.member.roles.cache.has(requiredRoleId)) {
       return message.safeReply(`❌ You don't have role to use this command.`);
@@ -30,7 +30,7 @@ module.exports = {
   },
 
   async interactionRun(interaction) {
-    const requiredRoleId = "1426799301480157226"; // replace with your role ID
+    const allowedUserId = "1380834797630259322"; // ✅ Your user ID
 
     if (!interaction.member.roles.cache.has(requiredRoleId)) {
       return interaction.followUp({
