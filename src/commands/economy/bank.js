@@ -102,27 +102,27 @@ module.exports = {
     const sub = args[0];
     let response;
 
-    if (sub === "balance") {
+    if (sub === "b") {
       const resolved = (await message.guild.resolveMember(args[1])) || message.member;
       response = await balance(resolved.user);
     }
 
     //
-    else if (sub === "deposit") {
+    else if (sub === "d") {
       const coins = args.length && parseInt(args[1]);
       if (isNaN(coins)) return message.safeReply("Provide a valid number of coins you wish to deposit");
       response = await deposit(message.author, coins);
     }
 
     //
-    else if (sub === "withdraw") {
+    else if (sub === "w") {
       const coins = args.length && parseInt(args[1]);
       if (isNaN(coins)) return message.safeReply("Provide a valid number of coins you wish to withdraw");
       response = await withdraw(message.author, coins);
     }
 
     //
-    else if (sub === "transfer") {
+    else if (sub === "t") {
       if (args.length < 3) return message.safeReply("Provide a valid user and coins to transfer");
       const target = await message.guild.resolveMember(args[1], true);
       if (!target) return message.safeReply("Provide a valid user to transfer coins to");
