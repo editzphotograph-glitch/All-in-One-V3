@@ -102,21 +102,25 @@ module.exports = (client) => {
         const player = client.musicManager.getPlayer(interaction.guildId);
         if (!player) return interaction.reply({ content: "No music is playing.", ephemeral: true });
 
-  // Clear queue
+    // Clear the queue
         player.queue.clear();
 
-  // Stop current track
+    // Stop current track
         await player.stop();
 
-  // Disconnect from voice
+    // Disconnect from voice
         if (player.voiceChannel) {
-          await player.disconnect();
+            try {
+                await player.disconnect();
+            } catch (err) {
+                console.error("Failed to disconnect player:", err);
+            }
         }
 
-  // Destroy the player
+    // Destroy the player after disconnect
         await client.musicManager.destroyPlayer(interaction.guildId);
 
-        await interaction.reply({ content: "⏹️ Music stopped.", ephemeral: true });
+        await interaction.reply({ content: "⏹️ Music stopped and disconnected.", ephemeral: true });
         break;
       }
       case "music_play_pause":
