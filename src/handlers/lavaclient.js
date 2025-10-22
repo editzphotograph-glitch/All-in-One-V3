@@ -110,14 +110,13 @@ module.exports = (client) => {
         else player.pause(true);
         await interaction.reply({ content: player.paused ? "⏸️ Paused" : "▶️ Resumed", ephemeral: true });
         break;
-      case "next":
-        if (queue.tracks.length > 0) {
-          queue.playNext(); // correct method in lavaclient-queue
-          await interaction.reply({ content: "⏭️ Skipped to next track", ephemeral: true });
-        } else {
-          await interaction.reply({ content: "No more tracks in queue.", ephemeral: true });
-        }
+      case "next": {
+      // Reuse your existing skip function
+        const { skip } = require("@commands/music/skip"); // adjust path if needed
+        const response = skip({ client, guildId: interaction.guildId });
+        await interaction.reply({ content: response, ephemeral: true });
         break;
+      }
       case "vol_down":
         player.setVolume(Math.max(player.volume - 10, 0));
         await interaction.reply({ content: `🔉 Volume: ${player.volume}%`, ephemeral: true });
