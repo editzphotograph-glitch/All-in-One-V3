@@ -98,12 +98,27 @@ module.exports = (client) => {
     if (!player) return interaction.reply({ content: "No music is playing.", ephemeral: true });
 
     switch (interaction.customId) {
-      case "music_stop":
-        await client.musicManager.destroyPlayer(interaction.guildId);
-        await player.stop();
-        await interaction.reply({ content: "⏹️ Music stopped and bot disconnected.", ephemeral: true });
-        break;
+      case "music_stop": {
+        const player = client.musicManager.getPlayer(interaction.guildId);
+        if (!player) return interaction.reply({ content: "No music is playing.", ephemeral: true });
 
+  // Clear queue
+        player.queue.clear();
+
+  // Stop current track
+        await player.stop();
+
+  // Disconnect from voice
+        if (player.voiceChannel) {
+          await player.disconnect();
+        }
+
+  // Destroy the player
+        await client.musicManager.destroyPlayer(interaction.guildId);
+
+        await interaction.reply({ content: "⏹️ Music stopped.", ephemeral: true });
+        break;
+      }
       case "music_play_pause":
         if (player.paused) player.resume();
         else player.pause(true);
