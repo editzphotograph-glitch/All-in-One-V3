@@ -103,8 +103,9 @@ module.exports = (client) => {
     switch (interaction.customId) {
       case "stop":
         if (!player) return interaction.reply({ content: "No music is playing.", ephemeral: true });
-        await player.stop(); // stops the current track and disconnects if needed
-        await interaction.reply({ content: "⏹️ Music stopped.", ephemeral: true });
+        await player.stop();
+        await interaction.client.musicManager.destroyPlayer(interaction.guildId);
+        await interaction.reply({ content: "⏹️ Music stopped and bot disconnected.", ephemeral: true });
         break;
       case "play_pause":
         if (player.paused) player.resume();
@@ -114,7 +115,16 @@ module.exports = (client) => {
       case "next": {
         const { skipSong } = require("../helpers/musicHelpers");
         const response = skipSong(interaction.client, interaction.guildId);
-        await interaction.reply({ content: response, ephemeral: true });
+
+  // After skipping, check if the queue is empty
+        const updatedPlayer = interaction.client.musicManager.getPlayer(interaction.guildId);
+        if (!updatedPlayer || updatedPlayer.queue.tracks.length === 0) {
+    // No tracks left, destroy player and disconnect
+          if (updatedPlayer) await interaction.client.musicManager.destroyPlayer(interaction.guildId);
+          await interaction.reply({ content: response + "\nQueue is empty, bot disconnected.", ephemeral: true });
+        } else {
+          await interaction.reply({ content: response, ephemeral: true });
+        }
         break;
       }
       case "vol_down":
