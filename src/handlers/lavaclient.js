@@ -111,7 +111,7 @@ module.exports = (client) => {
         await interaction.reply({ content: player.paused ? "⏸️ Paused" : "▶️ Resumed", ephemeral: true });
         break;
       case "next": {
-        const { skipSong } = require("@commands/music/musicHelpers");
+        const { skipSong } = require("../commands/music/musicHelpers");
         const response = skipSong(interaction.client, interaction.guildId);
         await interaction.reply({ content: response, ephemeral: true });
         break;
