@@ -99,8 +99,8 @@ module.exports = (client) => {
 
     switch (interaction.customId) {
       case "music_stop":
-        await player.stop();
         await client.musicManager.destroyPlayer(interaction.guildId);
+        await player.stop();
         await interaction.reply({ content: "⏹️ Music stopped and bot disconnected.", ephemeral: true });
         break;
 
@@ -125,7 +125,7 @@ module.exports = (client) => {
       }
 
       case "music_vol_down":
-        player.setVolume(Math.max(player.volume - 10, 0));
+        player.setVolume(Math.max(player.volume - 10, 10));
         await interaction.reply({ content: `🔉 Volume: ${player.volume}%`, ephemeral: true });
         break;
 
