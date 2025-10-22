@@ -111,8 +111,12 @@ module.exports = (client) => {
         await interaction.reply({ content: player.paused ? "⏸️ Paused" : "▶️ Resumed", ephemeral: true });
         break;
       case "next":
-        player.skip();
-        await interaction.reply({ content: "⏭️ Skipped to next track", ephemeral: true });
+        if (queue.tracks.length > 0) {
+          queue.playNext(); // correct method in lavaclient-queue
+          await interaction.reply({ content: "⏭️ Skipped to next track", ephemeral: true });
+        } else {
+          await interaction.reply({ content: "No more tracks in queue.", ephemeral: true });
+        }
         break;
       case "vol_down":
         player.setVolume(Math.max(player.volume - 10, 0));
