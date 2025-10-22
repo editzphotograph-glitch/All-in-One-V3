@@ -86,11 +86,16 @@ async function handleShip(ctx, user1, user2) {
   const quote = QUOTES[Math.floor(Math.random() * QUOTES.length)];
   const image = await createShipImage(user1, partner, percentage);
   const attachment = new AttachmentBuilder(image, { name: "ship.png" });
+  const member1 = ctx.guild.members.cache.get(user1.id);
+  const member2 = ctx.guild.members.cache.get(partner.id);
+
+  const name1 = member1?.displayName || user1.username;
+  const name2 = member2?.displayName || partner.username;
 
   const embed = new EmbedBuilder()
-    .setTitle("💞 Love Match Result")
+    .setTitle(`**${name1}** ❤️ **${name2}**`)
     .setDescription(
-      `**${user1.username}** ❤️ **${partner.username}**\n\n💘 **Compatibility:** ${percentage}%\n💬 *${quote}*`
+      `💘 **Compatibility:** ${percentage}%\n💬 *${quote}*`
     )
     .setColor(percentage >= 70 ? 0xff4d88 : 0x7289da)
     .setImage("attachment://ship.png");
