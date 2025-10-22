@@ -8,7 +8,6 @@ const withdraw = require("./sub/withdraw");
  * @type {import("@structures/Command")}
  */
 module.exports = {
-  name: "m",
   description: "access to bank operations",
   category: "ECONOMY",
   botPermissions: ["EmbedLinks"],
@@ -107,21 +106,18 @@ module.exports = {
       response = await balance(resolved.user);
     }
 
-    //
     else if (sub === "d") {
       const coins = args.length && parseInt(args[1]);
       if (isNaN(coins)) return message.safeReply("Provide a valid number of coins you wish to deposit");
       response = await deposit(message.author, coins);
     }
 
-    //
     else if (sub === "w") {
       const coins = args.length && parseInt(args[1]);
       if (isNaN(coins)) return message.safeReply("Provide a valid number of coins you wish to withdraw");
       response = await withdraw(message.author, coins);
     }
 
-    //
     else if (sub === "t") {
       if (args.length < 3) return message.safeReply("Provide a valid user and coins to transfer");
       const target = await message.guild.resolveMember(args[1], true);
@@ -131,7 +127,6 @@ module.exports = {
       response = await transfer(message.author, target.user, coins);
     }
 
-    //
     else {
       return message.safeReply("Invalid command usage");
     }
@@ -143,25 +138,21 @@ module.exports = {
     const sub = interaction.options.getSubcommand();
     let response;
 
-    // balance
     if (sub === "balance") {
       const user = interaction.options.getUser("user") || interaction.user;
       response = await balance(user);
     }
 
-    // deposit
     else if (sub === "deposit") {
       const coins = interaction.options.getInteger("coins");
       response = await deposit(interaction.user, coins);
     }
 
-    // withdraw
     else if (sub === "withdraw") {
       const coins = interaction.options.getInteger("coins");
       response = await withdraw(interaction.user, coins);
     }
 
-    // transfer
     else if (sub === "transfer") {
       const user = interaction.options.getUser("user");
       const coins = interaction.options.getInteger("coins");
