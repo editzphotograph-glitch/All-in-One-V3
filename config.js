@@ -5,7 +5,7 @@ module.exports = {
   VOTE: "https://dsc.gg/codexdev",
   PREFIX_COMMANDS: {
     ENABLED: true, // Enable/Disable prefix commands
-    DEFAULT_PREFIX: ",", // Default prefix for the bot
+    DEFAULT_PREFIX: "+", // Default prefix for the bot
   },
   INTERACTIONS: {
     SLASH: true, // Should the interactions be enabled
@@ -46,7 +46,7 @@ module.exports = {
 
   ECONOMY: {
     ENABLED: true,
-    CURRENCY: "$",
+    CURRENCY: "🥚",
     DAILY_COINS: 100, // coins to be received by daily command
     MIN_BEG_AMOUNT: 100, // minimum coins to be received when beg command is used
     MAX_BEG_AMOUNT: 2500, // maximum coins to be received when beg command is used
