@@ -46,13 +46,12 @@ module.exports = (client) => {
   // Queue finished
   lavaclient.on("nodeQueueFinish", async (_node, queue) => {
     queue.data.channel.safeSend("Queue has ended.");
-    await client.musicManager.destroyPlayer(queue.player.guildId).then(() => queue.player.disconnect());
+    const player = client.musicManager.getPlayer(queue.player.guildId);
+    if (player) await client.musicManager.destroyPlayer(queue.player.guildId);
   });
 
-  // Function to send embed with buttons
-  function sendNowPlaying(queue, song) {
-    const fields = [];
-
+  // Send or update Now Playing embed with buttons
+  async function sendNowPlaying(queue, song) {
     const embed = new EmbedBuilder()
       .setAuthor({ name: "Now Playing" })
       .setColor(client.config.EMBED_COLORS.BOT_EMBED)
@@ -61,77 +60,76 @@ module.exports = (client) => {
 
     if (song.sourceName === "youtube") {
       const identifier = song.identifier;
-      const thumbnail = `https://img.youtube.com/vi/${identifier}/hqdefault.jpg`;
-      embed.setThumbnail(thumbnail);
+      embed.setThumbnail(`https://img.youtube.com/vi/${identifier}/hqdefault.jpg`);
     }
 
-    fields.push({
-      name: "Song Duration",
-      value: "`" + prettyMs(song.length, { colonNotation: true }) + "`",
-      inline: true,
-    });
+    embed.setFields([
+      { name: "Song Duration", value: "`" + prettyMs(song.length, { colonNotation: true }) + "`", inline: true },
+      queue.tracks.length > 0
+        ? { name: "Position in Queue", value: (queue.tracks.length + 1).toString(), inline: true }
+        : null,
+    ].filter(Boolean));
 
-    if (queue.tracks.length > 0) {
-      fields.push({
-        name: "Position in Queue",
-        value: (queue.tracks.length + 1).toString(),
-        inline: true,
-      });
-    }
-
-    embed.setFields(fields);
-
-    // Buttons
     const buttons = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId("stop").setLabel("⏹️ Stop").setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId("play_pause").setLabel("⏯️ Play/Pause").setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId("next").setLabel("⏭️ Next").setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId("vol_down").setLabel("🔉 Vol -").setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId("vol_up").setLabel("🔊 Vol +").setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId("music_stop").setLabel("⏹️ Stop").setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId("music_play_pause").setLabel("⏯️ Play/Pause").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("music_next").setLabel("⏭️ Next").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("music_vol_down").setLabel("🔉 Vol -").setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId("music_vol_up").setLabel("🔊 Vol +").setStyle(ButtonStyle.Secondary)
     );
 
-    queue.data.channel.safeSend({ embeds: [embed], components: [buttons] });
+    // If embed already exists, edit it
+    if (queue.data.messageId) {
+      const msg = await queue.data.channel.messages.fetch(queue.data.messageId).catch(() => null);
+      if (msg) return msg.edit({ embeds: [embed], components: [buttons] });
+    }
+
+    // Otherwise send new message and store ID
+    const msg = await queue.data.channel.safeSend({ embeds: [embed], components: [buttons] });
+    queue.data.messageId = msg.id;
   }
 
-  // Interaction handling
+  // Music button interactions
   client.on("interactionCreate", async (interaction) => {
     if (!interaction.isButton()) return;
+    if (!interaction.customId.startsWith("music_")) return;
 
     const player = client.musicManager.getPlayer(interaction.guildId);
     if (!player) return interaction.reply({ content: "No music is playing.", ephemeral: true });
 
     switch (interaction.customId) {
-      case "stop":
-        if (!player) return interaction.reply({ content: "No music is playing.", ephemeral: true });
+      case "music_stop":
         await player.stop();
-        await interaction.client.musicManager.destroyPlayer(interaction.guildId);
+        await client.musicManager.destroyPlayer(interaction.guildId);
         await interaction.reply({ content: "⏹️ Music stopped and bot disconnected.", ephemeral: true });
         break;
-      case "play_pause":
+
+      case "music_play_pause":
         if (player.paused) player.resume();
         else player.pause(true);
         await interaction.reply({ content: player.paused ? "⏸️ Paused" : "▶️ Resumed", ephemeral: true });
         break;
-      case "next": {
-        const { skipSong } = require("../helpers/musicHelpers");
-        const response = skipSong(interaction.client, interaction.guildId);
 
-  // After skipping, check if the queue is empty
-        const updatedPlayer = interaction.client.musicManager.getPlayer(interaction.guildId);
+      case "music_next": {
+        const { skipSong } = require("../helpers/musicHelpers");
+        const response = skipSong(client, interaction.guildId);
+
+        const updatedPlayer = client.musicManager.getPlayer(interaction.guildId);
         if (!updatedPlayer || updatedPlayer.queue.tracks.length === 0) {
-    // No tracks left, destroy player and disconnect
-          if (updatedPlayer) await interaction.client.musicManager.destroyPlayer(interaction.guildId);
+          if (updatedPlayer) await client.musicManager.destroyPlayer(interaction.guildId);
           await interaction.reply({ content: response + "\nQueue is empty, bot disconnected.", ephemeral: true });
         } else {
           await interaction.reply({ content: response, ephemeral: true });
         }
         break;
       }
-      case "vol_down":
+
+      case "music_vol_down":
         player.setVolume(Math.max(player.volume - 10, 0));
         await interaction.reply({ content: `🔉 Volume: ${player.volume}%`, ephemeral: true });
         break;
-      case "vol_up":
+
+      case "music_vol_up":
         player.setVolume(Math.min(player.volume + 10, 100));
         await interaction.reply({ content: `🔊 Volume: ${player.volume}%`, ephemeral: true });
         break;
