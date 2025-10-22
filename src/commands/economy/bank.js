@@ -8,7 +8,7 @@ const withdraw = require("./sub/withdraw");
  * @type {import("@structures/Command")}
  */
 module.exports = {
-  name: "bank",
+  name: "b",
   description: "access to bank operations",
   category: "ECONOMY",
   botPermissions: ["EmbedLinks"],
@@ -17,19 +17,19 @@ module.exports = {
     minArgsCount: 1,
     subcommands: [
       {
-        trigger: "balance",
+        trigger: "b",
         description: "check your balance",
       },
       {
-        trigger: "deposit <coins>",
+        trigger: "d <coins>",
         description: "deposit coins to your bank account",
       },
       {
-        trigger: "withdraw <coins>",
+        trigger: "w <coins>",
         description: "withdraw coins from your bank account",
       },
       {
-        trigger: "transfer <user> <coins>",
+        trigger: "t <user> <coins>",
         description: "transfer coins to another user",
       },
     ],
