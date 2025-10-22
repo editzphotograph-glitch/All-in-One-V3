@@ -8,42 +8,33 @@ const withdraw = require("./sub/withdraw");
  * @type {import("@structures/Command")}
  */
 module.exports = {
-  description: "access to bank operations",
+  name: "mutta", // must be lowercase for slash commands
+  description: "Access to bank operations",
   category: "ECONOMY",
   botPermissions: ["EmbedLinks"],
+
   command: {
     enabled: true,
     minArgsCount: 1,
     subcommands: [
-      {
-        trigger: "b",
-        description: "check your balance",
-      },
-      {
-        trigger: "d <coins>",
-        description: "deposit coins to your bank account",
-      },
-      {
-        trigger: "w <coins>",
-        description: "withdraw coins from your bank account",
-      },
-      {
-        trigger: "t <user> <coins>",
-        description: "transfer coins to another user",
-      },
+      { trigger: "b", description: "Check your balance" },
+      { trigger: "d <coins>", description: "Deposit coins to your bank account" },
+      { trigger: "w <coins>", description: "Withdraw coins from your bank account" },
+      { trigger: "t <user> <coins>", description: "Transfer coins to another user" },
     ],
   },
+
   slashCommand: {
     enabled: true,
     options: [
       {
         name: "balance",
-        description: "check your coin balance",
+        description: "Check your coin balance",
         type: ApplicationCommandOptionType.Subcommand,
         options: [
           {
             name: "user",
-            description: "name of the user",
+            description: "The user to check balance for",
             type: ApplicationCommandOptionType.User,
             required: false,
           },
@@ -51,12 +42,12 @@ module.exports = {
       },
       {
         name: "deposit",
-        description: "deposit coins to your bank account",
+        description: "Deposit coins to your bank account",
         type: ApplicationCommandOptionType.Subcommand,
         options: [
           {
             name: "coins",
-            description: "number of coins to deposit",
+            description: "Number of coins to deposit",
             type: ApplicationCommandOptionType.Integer,
             required: true,
           },
@@ -64,12 +55,12 @@ module.exports = {
       },
       {
         name: "withdraw",
-        description: "withdraw coins from your bank account",
+        description: "Withdraw coins from your bank account",
         type: ApplicationCommandOptionType.Subcommand,
         options: [
           {
             name: "coins",
-            description: "number of coins to withdraw",
+            description: "Number of coins to withdraw",
             type: ApplicationCommandOptionType.Integer,
             required: true,
           },
@@ -77,18 +68,18 @@ module.exports = {
       },
       {
         name: "transfer",
-        description: "transfer coins to other user",
+        description: "Transfer coins to another user",
         type: ApplicationCommandOptionType.Subcommand,
         options: [
           {
             name: "user",
-            description: "the user to whom coins must be transferred",
+            description: "The user to transfer coins to",
             type: ApplicationCommandOptionType.User,
             required: true,
           },
           {
             name: "coins",
-            description: "the amount of coins to transfer",
+            description: "Number of coins to transfer",
             type: ApplicationCommandOptionType.Integer,
             required: true,
           },
@@ -97,43 +88,41 @@ module.exports = {
     ],
   },
 
+  // Handles prefix commands like: m b, m d, etc.
   async messageRun(message, args) {
-    const sub = args[0];
+    const sub = args[0]?.toLowerCase();
     let response;
 
     if (sub === "b") {
       const resolved = (await message.guild.resolveMember(args[1])) || message.member;
       response = await balance(resolved.user);
     }
-
     else if (sub === "d") {
-      const coins = args.length && parseInt(args[1]);
-      if (isNaN(coins)) return message.safeReply("Provide a valid number of coins you wish to deposit");
+      const coins = parseInt(args[1]);
+      if (isNaN(coins)) return message.safeReply("Provide a valid number of coins to deposit.");
       response = await deposit(message.author, coins);
     }
-
     else if (sub === "w") {
-      const coins = args.length && parseInt(args[1]);
-      if (isNaN(coins)) return message.safeReply("Provide a valid number of coins you wish to withdraw");
+      const coins = parseInt(args[1]);
+      if (isNaN(coins)) return message.safeReply("Provide a valid number of coins to withdraw.");
       response = await withdraw(message.author, coins);
     }
-
     else if (sub === "t") {
-      if (args.length < 3) return message.safeReply("Provide a valid user and coins to transfer");
+      if (args.length < 3) return message.safeReply("Provide a valid user and coins to transfer.");
       const target = await message.guild.resolveMember(args[1], true);
-      if (!target) return message.safeReply("Provide a valid user to transfer coins to");
+      if (!target) return message.safeReply("Provide a valid user to transfer coins to.");
       const coins = parseInt(args[2]);
-      if (isNaN(coins)) return message.safeReply("Provide a valid number of coins you wish to transfer");
+      if (isNaN(coins)) return message.safeReply("Provide a valid number of coins to transfer.");
       response = await transfer(message.author, target.user, coins);
     }
-
     else {
-      return message.safeReply("Invalid command usage");
+      return message.safeReply("Invalid command usage.");
     }
 
     await message.safeReply(response);
   },
 
+  // Handles slash commands: /bank balance, /bank deposit, etc.
   async interactionRun(interaction) {
     const sub = interaction.options.getSubcommand();
     let response;
@@ -142,17 +131,14 @@ module.exports = {
       const user = interaction.options.getUser("user") || interaction.user;
       response = await balance(user);
     }
-
     else if (sub === "deposit") {
       const coins = interaction.options.getInteger("coins");
       response = await deposit(interaction.user, coins);
     }
-
     else if (sub === "withdraw") {
       const coins = interaction.options.getInteger("coins");
       response = await withdraw(interaction.user, coins);
     }
-
     else if (sub === "transfer") {
       const user = interaction.options.getUser("user");
       const coins = interaction.options.getInteger("coins");
