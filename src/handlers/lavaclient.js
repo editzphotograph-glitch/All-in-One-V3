@@ -83,7 +83,7 @@ module.exports = (client) => {
 
     // Buttons
     const buttons = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId("prev").setLabel("⏮️ Prev").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("stop").setLabel("⏹️ Stop").setStyle(ButtonStyle.Danger),
       new ButtonBuilder().setCustomId("play_pause").setLabel("⏯️ Play/Pause").setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId("next").setLabel("⏭️ Next").setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId("vol_down").setLabel("🔉 Vol -").setStyle(ButtonStyle.Secondary),
@@ -101,9 +101,10 @@ module.exports = (client) => {
     if (!player) return interaction.reply({ content: "No music is playing.", ephemeral: true });
 
     switch (interaction.customId) {
-      case "prev":
-        if (player.queue.previousTrack) player.queue.previousTrack();
-        await interaction.reply({ content: "⏮️ Playing previous track", ephemeral: true });
+      case "stop":
+        if (!player) return interaction.reply({ content: "No music is playing.", ephemeral: true });
+        await player.stop(); // stops the current track and disconnects if needed
+        await interaction.reply({ content: "⏹️ Music stopped.", ephemeral: true });
         break;
       case "play_pause":
         if (player.paused) player.resume();
