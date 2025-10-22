@@ -1,131 +1,137 @@
 const { AttachmentBuilder, EmbedBuilder } = require("discord.js");
 const Canvas = require("canvas");
 
-// Replace with your actual role IDs
+// Replace these with your role IDs
 const MALE_ROLE_ID = "1430591296808030229";
 const FEMALE_ROLE_ID = "1430606157860438016";
 
-// Backgrounds for love levels
-const BACKGROUNDS = {
-  high: "https://i.imgur.com/v3tQhEH.jpg", // passionate red hearts
-  medium: "https://i.imgur.com/lQG2lYt.png", // pink romantic tone
-  low: "https://i.imgur.com/z7s6T6V.jpg" // grey or neutral background
-};
+const QUOTES = [
+  "A love written in the stars ✨",
+  "Maybe it’s meant to be ❤️",
+  "There’s potential here 👀",
+  "It’s complicated... 💔",
+  "Love is in the air 💞",
+  "A perfect match made by destiny 💖",
+];
 
-// Dynamic quotes by percentage
-const QUOTES = {
-  high: [
-    "Perfect match! ❤️🔥",
-    "A love written in the stars 🌟",
-    "Meant to be forever 💍",
-    "Soulmates found each other 💖",
-    "You two radiate pure love 💞"
-  ],
-  medium: [
-    "Cute chemistry 💕",
-    "There’s potential here 😉",
-    "Could turn into something special 🌹",
-    "Sweet connection, needs time 💫",
-    "A warm spark between hearts 💘"
-  ],
-  low: [
-    "Just friends, maybe more someday 😂",
-    "One-sided feelings detected 💔",
-    "Awkward but adorable 🥴",
-    "Better luck next time 💭",
-    "Not in this lifetime 😅"
-  ]
-};
-
+/**
+ * @type {import("@structures/Command")}
+ */
 module.exports = {
   name: "ship",
-  description: "Check relationship match between two users",
-  async execute(message, args, client) {
-    // Ignore bots
-    if (message.author.bot) return;
+  description: "Check love compatibility between two users",
+  category: "FUN",
+  cooldown: 10,
+  botPermissions: ["SendMessages", "EmbedLinks", "AttachFiles"],
 
-    const prefix = "!";
-    if (!message.content.startsWith(prefix)) return;
+  command: {
+    enabled: true,
+    usage: "ship [@user]",
+  },
 
-    const [command] = message.content.slice(prefix.length).trim().split(/\s+/);
-    if (command !== "ship") return;
+  slashCommand: {
+    enabled: true,
+  },
 
-    const user1 = message.author;
-    let user2 = message.mentions.users.first();
+  async messageRun(message, args) {
+    const processing = await message.safeReply("💖 Processing your ship...");
 
-    // If no mention, match with random opposite gender
-    if (!user2) {
+    const guild = message.guild;
+    const author = message.author;
+    const mention = message.mentions.users.first();
+    let user2;
+
+    // If user mentions someone, compare with them
+    if (mention) {
+      user2 = mention;
+    } else {
+      // Otherwise, match with random opposite gender
       const member = message.member;
-      if (!member) return message.reply("Unable to detect your member info.");
+      const isMale = member.roles.cache.has(MALE_ROLE_ID);
+      const isFemale = member.roles.cache.has(FEMALE_ROLE_ID);
 
-      if (member.roles.cache.has(MALE_ROLE_ID)) {
-        const females = message.guild.members.cache.filter(
-          m => m.roles.cache.has(FEMALE_ROLE_ID) && m.id !== user1.id
-        );
-        if (!females.size) return message.reply("No female users found to match!");
-        user2 = females.random().user;
-      } else if (member.roles.cache.has(FEMALE_ROLE_ID)) {
-        const males = message.guild.members.cache.filter(
-          m => m.roles.cache.has(MALE_ROLE_ID) && m.id !== user1.id
-        );
-        if (!males.size) return message.reply("No male users found to match!");
-        user2 = males.random().user;
-      } else {
-        return message.reply("You don't have a gender role to match from!");
+      if (!isMale && !isFemale) {
+        return processing.edit("❌ You don't have a valid gender role.");
       }
+
+      const targetRoleId = isMale ? FEMALE_ROLE_ID : MALE_ROLE_ID;
+      const targetRole = guild.roles.cache.get(targetRoleId);
+
+      if (!targetRole || targetRole.members.size === 0) {
+        return processing.edit("⚠️ No members found with the opposite role.");
+      }
+
+      const members = Array.from(targetRole.members.values());
+      const randomMember = members[Math.floor(Math.random() * members.length)];
+      user2 = randomMember.user;
     }
 
-    // Random love percentage
-    const lovePercent = Math.floor(Math.random() * 100) + 1;
-    const level = lovePercent >= 80 ? "high" : lovePercent >= 50 ? "medium" : "low";
-    const quote = QUOTES[level][Math.floor(Math.random() * QUOTES[level].length)];
-    const bgURL = BACKGROUNDS[level];
+    // Generate random percentage and quote
+    const percentage = Math.floor(Math.random() * 101);
+    const quote = QUOTES[Math.floor(Math.random() * QUOTES.length)];
 
-    // Create the canvas
-    const canvas = Canvas.createCanvas(700, 250);
-    const ctx = canvas.getContext("2d");
-    const bg = await Canvas.loadImage(bgURL);
-    ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
+    // Generate image
+    const image = await createShipImage(author, user2, percentage);
+    const attachment = new AttachmentBuilder(image, { name: "ship.png" });
 
-    // Load avatars
-    const avatar1 = await Canvas.loadImage(user1.displayAvatarURL({ extension: "png", size: 256 }));
-    const avatar2 = await Canvas.loadImage(user2.displayAvatarURL({ extension: "png", size: 256 }));
-
-    // Draw avatars (circle masks)
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(125, 125, 100, 0, Math.PI * 2);
-    ctx.closePath();
-    ctx.clip();
-    ctx.drawImage(avatar1, 25, 25, 200, 200);
-    ctx.restore();
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(575, 125, 100, 0, Math.PI * 2);
-    ctx.closePath();
-    ctx.clip();
-    ctx.drawImage(avatar2, 475, 25, 200, 200);
-    ctx.restore();
-
-    // Heart + percentage text
-    ctx.font = "bold 40px Sans";
-    ctx.fillStyle = "white";
-    ctx.textAlign = "center";
-    ctx.fillText(`${lovePercent}% ❤️`, 350, 140);
-    ctx.font = "24px Sans";
-    ctx.fillText(quote, 350, 200);
-
-    const attachment = new AttachmentBuilder(canvas.toBuffer(), { name: "ship.png" });
-
-    // Embed
+    // Create embed
     const embed = new EmbedBuilder()
-      .setColor(level === "high" ? 0xff3366 : level === "medium" ? 0xff6699 : 0x666666)
-      .setTitle("💘 Love Match 💘")
-      .setDescription(`${user1.username} ❤️ ${user2.username}\n**Compatibility:** ${lovePercent}%`)
-      .setImage("attachment://ship.png")
-      .setFooter({ text: quote });
+      .setTitle("💞 Love Match Result")
+      .setDescription(
+        `**${author.username}** ❤️ **${user2.username}**\n\n💘 **Compatibility:** ${percentage}%\n💬 *${quote}*`
+      )
+      .setColor(percentage >= 70 ? 0xff4d88 : 0x7289da)
+      .setImage("attachment://ship.png");
 
-    await message.channel.send({ embeds: [embed], files: [attachment] });
-  }
+    await processing.edit({ content: "", embeds: [embed], files: [attachment] });
+  },
 };
+
+async function createShipImage(user1, user2, lovePercentage) {
+  const canvas = Canvas.createCanvas(700, 250);
+  const ctx = canvas.getContext("2d");
+
+  // Dynamic color background
+  const gradient = ctx.createLinearGradient(0, 0, 700, 0);
+  if (lovePercentage >= 70) {
+    gradient.addColorStop(0, "#ff4d6d");
+    gradient.addColorStop(1, "#ff758f");
+  } else if (lovePercentage >= 40) {
+    gradient.addColorStop(0, "#ffa07a");
+    gradient.addColorStop(1, "#ffb6c1");
+  } else {
+    gradient.addColorStop(0, "#9ea7ad");
+    gradient.addColorStop(1, "#c0c0c0");
+  }
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Load avatars
+  const avatar1 = await Canvas.loadImage(user1.displayAvatarURL({ extension: "png", size: 256 }));
+  const avatar2 = await Canvas.loadImage(user2.displayAvatarURL({ extension: "png", size: 256 }));
+
+  // Draw avatars in circles
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(125, 125, 80, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.clip();
+  ctx.drawImage(avatar1, 45, 45, 160, 160);
+  ctx.restore();
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(575, 125, 80, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.clip();
+  ctx.drawImage(avatar2, 495, 45, 160, 160);
+  ctx.restore();
+
+  // Draw love percentage text
+  ctx.font = "bold 40px Sans";
+  ctx.fillStyle = "#ffffff";
+  ctx.textAlign = "center";
+  ctx.fillText(`❤️ ${lovePercentage}% ❤️`, canvas.width / 2, 135);
+
+  return canvas.toBuffer();
+}
