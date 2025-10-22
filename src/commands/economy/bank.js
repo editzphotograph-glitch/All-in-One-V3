@@ -8,7 +8,7 @@ const withdraw = require("./sub/withdraw");
  * @type {import("@structures/Command")}
  */
 module.exports = {
-  name: "b",
+  name: "m",
   description: "access to bank operations",
   category: "ECONOMY",
   botPermissions: ["EmbedLinks"],
