@@ -66,7 +66,7 @@ module.exports = {
         }
       }
     }
-  }
+  },
   /**
    * Get all temp voice records
    */
