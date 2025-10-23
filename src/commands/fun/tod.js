@@ -1,7 +1,7 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const fetch = require("node-fetch");
 
-// Map to track per-user cooldowns
+// Map for per-user cooldown
 const cooldowns = new Map();
 
 /**
@@ -26,23 +26,29 @@ module.exports = {
 };
 
 async function startTruthOrDare(target) {
+  // Initial embed
   const embed = new EmbedBuilder()
     .setTitle("🎲 Truth or Dare")
     .setDescription("Click a button below to get a random question")
     .setColor("Random")
     .setTimestamp();
 
+  await sendQuestionEmbed(target, embed);
+}
+
+async function sendQuestionEmbed(target, embed) {
   const buttonRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId("truth").setLabel("Truth").setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId("dare").setLabel("Dare").setStyle(ButtonStyle.Danger),
     new ButtonBuilder().setCustomId("random").setLabel("Random").setStyle(ButtonStyle.Success)
   );
 
+  // Send new embed with buttons
   const msg = await (target.followUp
     ? target.followUp({ embeds: [embed], components: [buttonRow] })
     : target.channel.send({ embeds: [embed], components: [buttonRow] }));
 
-  // Collector only for the original button message
+  // Collector for this specific embed
   const collector = msg.createMessageComponentCollector({ componentType: 2 });
 
   collector.on("collect", async (btn) => {
@@ -58,10 +64,11 @@ async function startTruthOrDare(target) {
     if (!["truth", "dare", "random"].includes(btn.customId)) return;
     await btn.deferUpdate();
 
-    // Random rating for each question
+    // Random rating
     const ratings = ["pg", "pg13", "r"];
     const rating = ratings[Math.floor(Math.random() * ratings.length)];
 
+    // Determine URL
     let url = "";
     if (btn.customId === "truth") url = `https://api.truthordarebot.xyz/v1/truth?rating=${rating}`;
     else if (btn.customId === "dare") url = `https://api.truthordarebot.xyz/api/dare?rating=${rating}`;
@@ -78,7 +85,7 @@ async function startTruthOrDare(target) {
       .setColor("Random")
       .setTimestamp();
 
-    // Send new embed but reuse original buttons
-    await btn.channel.send({ embeds: [questionEmbed], components: [buttonRow] });
+    // Send a new embed with buttons and attach a collector for it
+    await sendQuestionEmbed(btn, questionEmbed);
   });
 }
