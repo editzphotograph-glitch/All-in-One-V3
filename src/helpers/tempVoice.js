@@ -17,18 +17,20 @@ async function initTempVoiceSystem(client) {
   for (const record of saved) {
     const guild = client.guilds.cache.get(record.guildId);
     if (!guild) continue;
+
     const channel = guild.channels.cache.get(record.channelId);
     if (!channel) {
       await deleteTempVoice(record.channelId);
       continue;
     }
+
+    // Delete empty temp VCs
     if (channel.members.size === 0) {
       await channel.delete().catch(() => {});
       await deleteTempVoice(record.channelId);
     }
   }
 
-  // Voice state listener
   client.on("voiceStateUpdate", async (oldState, newState) => {
     const guild = newState.guild || oldState.guild;
     if (!guild) return;
@@ -55,6 +57,7 @@ async function initTempVoiceSystem(client) {
           ],
         });
 
+        // Save to database
         await createTempVoice({
           guildId: guild.id,
           channelId: tempVc.id,
@@ -69,10 +72,11 @@ async function initTempVoiceSystem(client) {
       }
     }
 
-    // User left temp VC
+    // User left a temp VC
     if (leftId && leftId !== joinedId) {
       const oldChannel = oldState.channel;
       if (!oldChannel) return;
+
       const savedVCs = await getAll();
       const record = savedVCs.find(r => r.channelId === oldChannel.id);
       if (!record) return;
@@ -85,7 +89,7 @@ async function initTempVoiceSystem(client) {
     }
   });
 
-  client.logger.success("Temp Voice System initialized");
+  client.logger?.success("Temp Voice System initialized");
 }
 
 module.exports = { initTempVoiceSystem };
