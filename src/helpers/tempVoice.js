@@ -1,7 +1,7 @@
 const { ChannelType, PermissionFlagsBits } = require("discord.js");
-const { createTempVoice, deleteTempVoice, getAll } = require("../../src/database/schemas/tempvoice");
-
+const { createTempVoice, deleteTempVoice, getAll } = require("./tempvoice"); // path adjusted
 const MASTER_CATEGORY_ID = "1430673210654855370";
+
 const MASTER_VOICE_IDS = {
   solo: "1426787282836521123",
   duo: "1426787378562994287",
@@ -9,6 +9,7 @@ const MASTER_VOICE_IDS = {
   squad: "1426788200365424692",
   tenz: "1426788667321749586",
 };
+
 const LIMITS = { solo: 1, duo: 2, trio: 3, squad: 4, tenz: 10 };
 
 async function initTempVoiceSystem(client) {
@@ -20,17 +21,16 @@ async function initTempVoiceSystem(client) {
 
     const channel = guild.channels.cache.get(record.channelId);
     if (!channel) {
-      await deleteTempVoice(record.channelId);
+      await deleteTempVoice(record.channelId, client);
       continue;
     }
 
-    // Delete empty temp VCs
     if (channel.members.size === 0) {
-      await channel.delete().catch(() => {});
-      await deleteTempVoice(record.channelId);
+      await deleteTempVoice(record.channelId, client);
     }
   }
 
+  // Listen to voice state updates
   client.on("voiceStateUpdate", async (oldState, newState) => {
     const guild = newState.guild || oldState.guild;
     if (!guild) return;
@@ -38,6 +38,7 @@ async function initTempVoiceSystem(client) {
 
     const joinedId = newState.channelId;
     const leftId = oldState.channelId;
+
     const getMasterType = (id) => Object.keys(MASTER_VOICE_IDS).find(t => MASTER_VOICE_IDS[t] === id);
 
     // User joined a master VC
@@ -57,7 +58,6 @@ async function initTempVoiceSystem(client) {
           ],
         });
 
-        // Save to database
         await createTempVoice({
           guildId: guild.id,
           channelId: tempVc.id,
@@ -82,9 +82,7 @@ async function initTempVoiceSystem(client) {
       if (!record) return;
 
       if (oldChannel.members.size === 0) {
-        await oldChannel.delete().catch(() => {});
-        await deleteTempVoice(oldChannel.id);
-        console.log(`🗑️ Deleted empty temp VC: ${oldChannel.name}`);
+        await deleteTempVoice(oldChannel.id, client);
       }
     }
   });
