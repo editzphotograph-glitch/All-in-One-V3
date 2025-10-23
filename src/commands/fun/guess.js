@@ -7,7 +7,7 @@ const {
   StringSelectMenuBuilder,
   ComponentType,
 } = require("discord.js");
-const AkinatorSession = require("../../src/database/schemas/akinatorSession");
+const { AkinatorSession } = require("../../src/database/schemas/akinatorSession");
 
 /**
  * @type {import("@structures/Command")}
