@@ -41,7 +41,7 @@ async function initTempVoiceSystem(client) {
     // User joined a master VC
     const joinedType = getMasterType(joinedId);
     if (joinedType) {
-      const tempName = `${joinedType.toUpperCase()} - ${newState.member.user.username}`;
+      const tempName = `🔸${joinedType.toUpperCase()} - ${newState.member.user.displayname}`;
 
       try {
         const tempVc = await guild.channels.create({
