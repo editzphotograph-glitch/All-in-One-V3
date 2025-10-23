@@ -99,9 +99,9 @@ async function startAkinatorGame(msg, user, region) {
 
     // If Akinator is ready to guess
     if (aki.isWin) {
-      const guessName = aki.suggestion_name;
-      const guessDesc = aki.suggestion_desc;
-      const guessImg = aki.suggestion_photo;
+      const guessName = aki.sugestion_name;
+      const guessDesc = aki.sugestion_desc;
+      const guessImg = aki.sugestion_photo;
 
       const confirmRow = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId("final_yes").setLabel("Yes").setStyle(ButtonStyle.Success),
@@ -135,9 +135,9 @@ function handleFinalConfirmation(msg, user, aki, region) {
   collector.on("collect", async (i) => {
     await i.deferUpdate();
 
-    const guessName = aki.suggestion_name;
-    const guessDesc = aki.suggestion_desc;
-    const guessImg = aki.suggestion_photo;
+    const guessName = aki.sugestion_name;
+    const guessDesc = aki.sugestion_desc;
+    const guessImg = aki.sugestion_photo;
 
     if (i.customId === "final_yes") {
       let session = await AkiSession.findOne({ userId: user.id, resultName: guessName });
