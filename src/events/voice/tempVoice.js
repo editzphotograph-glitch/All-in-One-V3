@@ -11,88 +11,81 @@ const MASTER_VOICE_IDS = {
 };
 const LIMITS = { solo: 1, duo: 2, trio: 3, squad: 4, tenz: 10 };
 
-module.exports = {
-  name: 'ready',
-  once: true,
-  async execute(client) {
-    // Cleanup on startup
-    const saved = await getAll();
-    for (const record of saved) {
-      const guild = client.guilds.cache.get(record.guildId);
-      if (!guild) continue;
-      const channel = guild.channels.cache.get(record.channelId);
-      if (!channel) {
-        await deleteTempVoice(record.channelId);
-        continue;
-      }
-      if (channel.members.size === 0) {
-        await channel.delete().catch(() => {});
-        await deleteTempVoice(record.channelId);
+async function initTempVoiceSystem(client) {
+  // Cleanup on startup
+  const saved = await getAll();
+  for (const record of saved) {
+    const guild = client.guilds.cache.get(record.guildId);
+    if (!guild) continue;
+    const channel = guild.channels.cache.get(record.channelId);
+    if (!channel) {
+      await deleteTempVoice(record.channelId);
+      continue;
+    }
+    if (channel.members.size === 0) {
+      await channel.delete().catch(() => {});
+      await deleteTempVoice(record.channelId);
+    }
+  }
+
+  // Voice state listener
+  client.on("voiceStateUpdate", async (oldState, newState) => {
+    const guild = newState.guild || oldState.guild;
+    if (!guild) return;
+    if (newState.member?.user.bot) return;
+
+    const joinedId = newState.channelId;
+    const leftId = oldState.channelId;
+    const getMasterType = (id) => Object.keys(MASTER_VOICE_IDS).find(t => MASTER_VOICE_IDS[t] === id);
+
+    // User joined a master VC
+    const joinedType = getMasterType(joinedId);
+    if (joinedType) {
+      const tempName = `${joinedType.toUpperCase()} - ${newState.member.user.username}`;
+
+      try {
+        const tempVc = await guild.channels.create({
+          name: tempName,
+          type: ChannelType.GuildVoice,
+          parent: MASTER_CATEGORY_ID,
+          userLimit: LIMITS[joinedType],
+          permissionOverwrites: [
+            { id: guild.id, allow: [PermissionFlagsBits.Connect, PermissionFlagsBits.ViewChannel] },
+            { id: newState.member.id, allow: [PermissionFlagsBits.MoveMembers, PermissionFlagsBits.ManageChannels] },
+          ],
+        });
+
+        await createTempVoice({
+          guildId: guild.id,
+          channelId: tempVc.id,
+          ownerId: newState.member.id,
+          type: joinedType,
+        });
+
+        await newState.setChannel(tempVc).catch(() => {});
+        console.log(`✅ Temp VC created: ${tempVc.name} for ${newState.member.user.tag}`);
+      } catch (err) {
+        console.error("❌ Failed to create temp VC:", err);
       }
     }
 
-    // Voice state listener
-    client.on("voiceStateUpdate", async (oldState, newState) => {
-      const guild = newState.guild || oldState.guild;
-      if (!guild) return;
-      if (newState.member?.user.bot) return;
+    // User left temp VC
+    if (leftId && leftId !== joinedId) {
+      const oldChannel = oldState.channel;
+      if (!oldChannel) return;
+      const savedVCs = await getAll();
+      const record = savedVCs.find(r => r.channelId === oldChannel.id);
+      if (!record) return;
 
-      const joinedId = newState.channelId;
-      const leftId = oldState.channelId;
-      const getMasterType = (id) => Object.keys(MASTER_VOICE_IDS).find(t => MASTER_VOICE_IDS[t] === id);
-
-      // Join master channel
-      const joinedType = getMasterType(joinedId);
-      if (joinedType) {
-        if (oldState.channelId) {
-          const oldTemp = await getAll();
-          const oldRecord = oldTemp.find(r => r.channelId === oldState.channelId);
-          if (oldRecord && oldState.channel.members.size === 0) {
-            await oldState.channel.delete().catch(() => {});
-            await deleteTempVoice(oldState.channelId);
-          }
-        }
-
-        const tempName = `${joinedType.toUpperCase()} - ${newState.member.user.username}`;
-        try {
-          const tempVc = await guild.channels.create({
-            name: tempName,
-            type: ChannelType.GuildVoice,
-            parent: MASTER_CATEGORY_ID,
-            userLimit: LIMITS[joinedType],
-            permissionOverwrites: [
-              { id: guild.id, allow: [PermissionFlagsBits.Connect, PermissionFlagsBits.ViewChannel] },
-              { id: newState.member.id, allow: [PermissionFlagsBits.MoveMembers, PermissionFlagsBits.ManageChannels] },
-            ],
-          });
-
-          await createTempVoice({
-            guildId: guild.id,
-            channelId: tempVc.id,
-            ownerId: newState.member.id,
-            type: joinedType,
-          });
-
-          await newState.setChannel(tempVc).catch(() => {});
-          console.log(`✅ Temp VC created: ${tempVc.name} for ${newState.member.user.tag}`);
-        } catch (err) {
-          console.error("❌ Failed to create temp VC:", err);
-        }
+      if (oldChannel.members.size === 0) {
+        await oldChannel.delete().catch(() => {});
+        await deleteTempVoice(oldChannel.id);
+        console.log(`🗑️ Deleted empty temp VC: ${oldChannel.name}`);
       }
+    }
+  });
 
-      // Leave temp VC
-      if (leftId && leftId !== joinedId) {
-        const oldChannel = oldState.channel;
-        if (!oldChannel) return;
-        const savedVCs = await getAll();
-        const record = savedVCs.find(r => r.channelId === oldChannel.id);
-        if (!record) return;
-        if (oldChannel.members.size === 0) {
-          await oldChannel.delete().catch(() => {});
-          await deleteTempVoice(oldChannel.id);
-          console.log(`🗑️ Deleted empty temp VC: ${oldChannel.name}`);
-        }
-      }
-    });
-  }
-};
+  client.logger.success("Temp Voice System initialized");
+}
+
+module.exports = { initTempVoiceSystem };
