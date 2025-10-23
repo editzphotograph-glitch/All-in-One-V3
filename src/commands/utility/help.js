@@ -147,7 +147,7 @@ async function getHelpMenu({ client, guild }) {
           name: "__**<a:loading:1430904475027243119> Features [10-18]**__",
           value: `>>> <:moderation:1430899677112438827> Moderation 
 <:music:1430899594568531980> Music 
-<:Owner:1361776502143844515> Owner 
+<:owner:1430900840368963665> Owner 
 <:Comandos:1430899515522547713> Social 
 <:Stats:1430900793724375141> Statistics 
 <:claim:1430899436753780821> Suggestions 
@@ -158,10 +158,10 @@ async function getHelpMenu({ client, guild }) {
         ])
     .setDescription(`<a:loading:1430904475027243119> **Mutta Puffs is here to help. \n > It is a multipourpose bot.**
 <a:loading:1430904475027243119> __**BOT INFO**__
-> <a:loading:1430904475027243119> Prefix: \`M\`
-> <a:loading:1430904475027243119> Discord.js Version: \`v14.15.2\`
-> <a:loading:1430904475027243119> Running on \`${process.versions.node}\`
-> <a:loading:1430904475027243119> Modified by \`Mavi\``);
+> <a:host:1430908941726122144> Prefix: \`M\`
+> <a:host:1430908941726122144> Discord.js Version: \`v14.15.2\`
+> <a:host:1430908941726122144> Running on \`${process.versions.node}\`
+> <a:host:1430908941726122144> Modified by \`Mavi\``);
 
   return {
     embeds: [embed],
