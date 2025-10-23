@@ -79,11 +79,13 @@ async function sendQuestionEmbed(target, embed) {
     const res = await fetch(url);
     const data = await res.json();
 
+    // Embed showing who pressed the button
     const questionEmbed = new EmbedBuilder()
       .setTitle(`🎲 ${data.type} | Rating: ${rating.toUpperCase()}`)
       .setDescription(data.question)
       .setColor("Random")
-      .setTimestamp();
+      .setTimestamp()
+      .setAuthor({ name: btn.user.username, iconURL: btn.user.displayAvatarURL({ dynamic: true }) });
 
     // Send a new embed with buttons and attach a collector for it
     await sendQuestionEmbed(btn, questionEmbed);
