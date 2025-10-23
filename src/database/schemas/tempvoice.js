@@ -58,19 +58,15 @@ module.exports = {
     await Model.deleteOne({ channelId });
 
     if (client) {
-      // Attempt to delete the Discord channel safely
-      const guilds = client.guilds.cache.values();
-      for (const guild of guilds) {
+      for (const guild of client.guilds.cache.values()) {
         const channel = guild.channels.cache.get(channelId);
         if (channel) {
           await channel.delete().catch(() => {});
-          console.log(`🗑️ Deleted Discord temp VC: ${channel.name}`);
-          break; // channel found and deleted
+          break;
         }
       }
     }
-  },
-
+  }
   /**
    * Get all temp voice records
    */
