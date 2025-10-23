@@ -1,4 +1,3 @@
-// Polyfill for File in Node.js
 const { Blob, File } = require("node:buffer");
 globalThis.File = File;
 globalThis.Blob = Blob;
@@ -14,8 +13,8 @@ const {
 const AkiSession = require("@schemas/AkinatorSession");
 
 module.exports = {
-  name: "akinator",
-  description: "Play Akinator with categories",
+  name: "guess",
+  description: "Play a game of Akinator with categories",
   category: "FUN",
   cooldown: 10,
   command: { enabled: true },
@@ -31,21 +30,20 @@ module.exports = {
   },
 };
 
-// Step 1: Category Selection
 async function startCategorySelection(channel, user) {
   const select = new StringSelectMenuBuilder()
     .setCustomId("akinator_category")
     .setPlaceholder("Select a category to start!")
     .addOptions([
       { label: "People", value: "en", emoji: "👤" },
-      { label: "Objects", value: "en_objects", emoji: "🎩" },
       { label: "Animals", value: "en_animals", emoji: "🐾" },
+      { label: "Objects", value: "en_objects", emoji: "🎩" },
     ]);
 
   const row = new ActionRowBuilder().addComponents(select);
 
   const embed = new EmbedBuilder()
-    .setTitle("🧞 Play Akinator")
+    .setTitle("🧞 Play Guess")
     .setDescription("Select a category below to begin.")
     .setColor("Blurple");
 
@@ -59,19 +57,30 @@ async function startCategorySelection(channel, user) {
 
   collector.on("collect", async (i) => {
     await i.deferUpdate();
-    const region = i.values[0]; // "en", "en_objects", or "en_animals"
+    const region = i.values[0];
     await startAkinatorGame(msg, user, region);
     collector.stop();
   });
 
+  collector.on("end", async (_, reason) => {
+    if (reason !== "collected")
+      await msg.edit({ content: "Timed out.", embeds: [], components: [] });
+  });
 }
 
-// Step 2: Akinator Game
 async function startAkinatorGame(msg, user, region) {
-  const api = new Akinator({ region, childMode: false });
-  await api.start();
+  const aki = new Akinator({ region, childMode: false });
+  await aki.start();
 
-  const buttons = new ActionRowBuilder().addComponents(
+  const getQuestionEmbed = (question, step, img) =>
+    new EmbedBuilder()
+      .setTitle("🧞 Guess Game")
+      .setDescription(question)
+      .setColor("Gold")
+      .setImage(img || null)
+      .setFooter({ text: `Category: ${region.replace("en_", "") || "people"} | Question ${step}` });
+
+  const answerButtons = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId("0").setLabel("Yes").setStyle(ButtonStyle.Success),
     new ButtonBuilder().setCustomId("1").setLabel("No").setStyle(ButtonStyle.Danger),
     new ButtonBuilder().setCustomId("2").setLabel("Don't Know").setStyle(ButtonStyle.Secondary),
@@ -79,13 +88,7 @@ async function startAkinatorGame(msg, user, region) {
     new ButtonBuilder().setCustomId("4").setLabel("Probably Not").setStyle(ButtonStyle.Primary)
   );
 
-  let embed = new EmbedBuilder()
-    .setTitle("🧞 Akinator Game")
-    .setDescription(api.question)
-    .setColor("Gold")
-    .setFooter({ text: `Category: ${region.replace("en_", "") || "people"} | Question 1` });
-
-  await msg.edit({ embeds: [embed], components: [buttons], content: "" });
+  await msg.edit({ embeds: [getQuestionEmbed(aki.question, aki.currentStep + 1)], components: [answerButtons], content: "" });
 
   const collector = msg.createMessageComponentCollector({
     componentType: ComponentType.Button,
@@ -93,27 +96,63 @@ async function startAkinatorGame(msg, user, region) {
     time: 5 * 60_000,
   });
 
-  collector.on("collect", async (interaction) => {
-    await interaction.deferUpdate();
-    const choice = parseInt(interaction.customId);
-    await api.answer(choice);
+  collector.on("collect", async (i) => {
+    await i.deferUpdate();
+    const choice = parseInt(i.customId);
+    await aki.answer(choice);
 
-    if (api.isWin) {
-      const guess = {
-        name: api.sugestion_name,
-        description: api.sugestion_desc,
-        image: api.sugestion_photo,
-      };
+    // If Akinator is ready to guess
+    if (aki.isWin) {
+      const guessName = aki.suggestionName;
+      const guessDesc = aki.suggestionDescription;
+      const guessImg = aki.suggestionPhoto;
 
-      let session = await AkiSession.findOne({ userId: user.id, resultName: guess.name });
+      const confirmRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId("final_yes").setLabel("Yes").setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId("final_no").setLabel("No").setStyle(ButtonStyle.Danger)
+      );
+
+      const confirmEmbed = new EmbedBuilder()
+        .setTitle("🧞 Is this correct?")
+        .setDescription(`**${guessName}**\n${guessDesc || ""}`)
+        .setImage(guessImg)
+        .setColor("Orange")
+        .setFooter({ text: `Category: ${region.replace("en_", "") || "people"} | Question ${aki.currentStep + 1}` });
+
+      await msg.edit({ embeds: [confirmEmbed], components: [confirmRow] });
+      return handleFinalConfirmation(msg, user, aki, region);
+    }
+
+    // Continue asking questions
+    await msg.edit({ embeds: [getQuestionEmbed(aki.question, aki.currentStep + 1, aki.suggestionPhoto)], components: [answerButtons] });
+  });
+}
+
+function handleFinalConfirmation(msg, user, aki, region) {
+  const collector = msg.createMessageComponentCollector({
+    componentType: ComponentType.Button,
+    filter: (i) => i.user.id === user.id,
+    time: 60_000,
+    max: 1,
+  });
+
+  collector.on("collect", async (i) => {
+    await i.deferUpdate();
+
+    const guessName = aki.suggestionName;
+    const guessDesc = aki.suggestionDescription;
+    const guessImg = aki.suggestionPhoto;
+
+    if (i.customId === "final_yes") {
+      let session = await AkiSession.findOne({ userId: user.id, resultName: guessName });
       if (!session) {
         session = await AkiSession.create({
           userId: user.id,
           username: user.username,
           category: region,
-          resultName: guess.name,
-          description: guess.description,
-          image: guess.image,
+          resultName: guessName,
+          description: guessDesc,
+          image: guessImg,
           timesGuessed: 1,
           lastGuessed: new Date(),
         });
@@ -123,38 +162,37 @@ async function startAkinatorGame(msg, user, region) {
         await session.save();
       }
 
-      const restartButton = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId("restart_akinator").setLabel("Restart Game").setStyle(ButtonStyle.Primary)
-      );
-
-      embed = new EmbedBuilder()
+      const finalEmbed = new EmbedBuilder()
         .setTitle("🧞 Guessed Right!")
         .setDescription(
-          `**${guess.name}**\n${guess.description || ""}\n**Times Guessed:** ${session.timesGuessed}\n**Last Guessed:** <t:${Math.floor(session.lastGuessed.getTime() / 1000)}:R>`
+          `**${guessName}**\n${guessDesc || ""}\n**Times Guessed:** ${session.timesGuessed}\n**Last Guessed:** <t:${Math.floor(session.lastGuessed.getTime() / 1000)}:R>`
         )
-        .setImage(guess.image)
-        .setColor("Green");
+        .setColor("Green")
+        .setImage(guessImg);
 
-      await msg.edit({ embeds: [embed], components: [restartButton] });
-      collector.stop();
-    } else {
-      embed.setDescription(api.question);
-      embed.setFooter({ text: `Category: ${region.replace("en_", "") || "people"} | Question ${api.currentStep + 1}` });
-      await msg.edit({ embeds: [embed] });
-    }
-  });
+      const restartButton = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId("restart_aki").setLabel("Restart Game").setStyle(ButtonStyle.Primary)
+      );
 
-  const restartCollector = msg.createMessageComponentCollector({
-    componentType: ComponentType.Button,
-    filter: (i) => i.user.id === user.id,
-    time: 10 * 60_000,
-  });
+      await msg.edit({ embeds: [finalEmbed], components: [restartButton] });
+    } else if (i.customId === "final_no") {
+      // Continue game
+      const continueEmbed = new EmbedBuilder()
+        .setTitle("🧞 Guess continues...")
+        .setDescription(aki.question)
+        .setColor("Gold")
+        .setImage(aki.suggestionPhoto || null)
+        .setFooter({ text: `Category: ${region.replace("en_", "") || "people"} | Question ${aki.currentStep + 1}` });
 
-  restartCollector.on("collect", async (i) => {
-    if (i.customId === "restart_akinator") {
-      await i.deferUpdate();
-      await startCategorySelection(msg.channel, user);
-      restartCollector.stop();
+      const answerButtons = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId("0").setLabel("Yes").setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId("1").setLabel("No").setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId("2").setLabel("Don't Know").setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("3").setLabel("Probably").setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId("4").setLabel("Probably Not").setStyle(ButtonStyle.Primary)
+      );
+
+      await msg.edit({ embeds: [continueEmbed], components: [answerButtons] });
     }
   });
 }
