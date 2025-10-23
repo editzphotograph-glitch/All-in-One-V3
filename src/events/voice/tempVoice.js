@@ -1,7 +1,7 @@
 const { ChannelType, PermissionFlagsBits } = require("discord.js");
 const { createTempVoice, deleteTempVoice, getAll } = require("../../database/schemas/tempvoice");
 
-const MASTER_CATEGORY_ID = "1430673210654855370"; // Replace
+const MASTER_CATEGORY_ID = "1430673210654855370";
 const MASTER_VOICE_IDS = {
   solo: "1426787282836521123",
   duo: "1426787378562994287",
@@ -10,7 +10,6 @@ const MASTER_VOICE_IDS = {
   tenz: "1426788667321749586",
 };
 
-// Max user limits
 const LIMITS = {
   solo: 1,
   duo: 2,
@@ -20,13 +19,13 @@ const LIMITS = {
 };
 
 module.exports = async (client) => {
-  // Cleanup empty VCs from previous sessions
+  // Cleanup on startup
   const saved = await getAll();
   for (const record of saved) {
     const guild = client.guilds.cache.get(record.guildId);
     if (!guild) continue;
-
     const channel = guild.channels.cache.get(record.channelId);
+
     if (!channel) {
       await deleteTempVoice(record.channelId);
       continue;
@@ -38,15 +37,20 @@ module.exports = async (client) => {
     }
   }
 
-  // Voice state handler
   client.on("voiceStateUpdate", async (oldState, newState) => {
     const guild = newState.guild;
+    const joinedId = newState.channelId;
+    const leftId = oldState.channelId;
 
-    // User joins a master channel
-    if (!oldState.channelId && newState.channelId) {
-      const joinedId = newState.channelId;
+    // Ignore bots
+    if (newState.member.user.bot) return;
+
+    // USER JOINED a master channel
+    if (joinedId && MASTER_VOICE_IDS && Object.values(MASTER_VOICE_IDS).includes(joinedId)) {
       const type = Object.keys(MASTER_VOICE_IDS).find(t => MASTER_VOICE_IDS[t] === joinedId);
-      if (type) {
+      if (!type) return;
+
+      try {
         const tempName = `${type.toUpperCase()} - ${newState.member.user.username}`;
 
         const tempVc = await guild.channels.create({
@@ -68,22 +72,25 @@ module.exports = async (client) => {
         });
 
         await newState.setChannel(tempVc).catch(() => {});
+        console.log(`✅ Temp VC created for ${newState.member.user.username}: ${tempVc.name}`);
+      } catch (err) {
+        console.error("❌ Failed to create temp VC:", err);
       }
     }
 
-    // User leaves a channel
-    if (oldState.channelId && (!newState.channelId || oldState.channelId !== newState.channelId)) {
+    // USER LEFT a temp VC
+    if (leftId && leftId !== joinedId) {
       const oldChannel = oldState.channel;
       if (!oldChannel) return;
 
-      const record = await getAll(); // Get all saved temp channels
-      const isTemp = record.find(r => r.channelId === oldChannel.id);
-      if (!isTemp) return;
+      const savedVCs = await getAll();
+      const record = savedVCs.find(r => r.channelId === oldChannel.id);
+      if (!record) return;
 
-      // Delete if empty
       if (oldChannel.members.size === 0) {
         await oldChannel.delete().catch(() => {});
         await deleteTempVoice(oldChannel.id);
+        console.log(`🗑️ Deleted empty temp VC: ${oldChannel.name}`);
       }
     }
   });
