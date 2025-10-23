@@ -65,7 +65,7 @@ async function sendQuestionEmbed(target, embed) {
     await btn.deferUpdate();
 
     // Random rating
-    const ratings = ["pg", "pg13", "r"];
+    const ratings = ["pg", "pg13"];
     const rating = ratings[Math.floor(Math.random() * ratings.length)];
 
     // Determine URL
