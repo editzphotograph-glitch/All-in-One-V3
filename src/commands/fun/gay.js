@@ -65,7 +65,7 @@ async function sendGayEmbed(target, user) {
   // Draw username on image
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 30px Sans";
-  ctx.fillText(user.displayname, 270, 110);
+  ctx.fillText(user.displayName, 270, 110);
 
   // Draw percentage on image
   ctx.fillStyle = "#ffffff";
