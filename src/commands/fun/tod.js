@@ -60,11 +60,13 @@ async function startTruthOrDare(target) {
     const res = await fetch(url);
     const data = await res.json();
 
-    const questionEmbed = EmbedBuilder.from(embed)
+    const questionEmbed = new EmbedBuilder()
       .setTitle(`🎲 ${data.type} | Rating: ${rating.toUpperCase()}`)
       .setDescription(data.question)
-      .setColor("Random");
+      .setColor("Random")
+      .setTimestamp();
 
-    await btn.editReply({ embeds: [questionEmbed], components: [buttonRow] });
+    // Send a new embed for each question
+    await btn.channel.send({ embeds: [questionEmbed], components: [buttonRow] });
   });
 }
