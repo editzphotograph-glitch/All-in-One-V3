@@ -44,7 +44,7 @@ async function sendGayEmbed(target, user) {
   const ctx = canvas.getContext("2d");
 
   // Load LGBTQ background
-  const background = await Canvas.loadImage("https://i.imgur.com/8Km9tLL.png"); // Replace with your background
+  const background = await Canvas.loadImage("https://i.ibb.co/H8S5CgW/240-F-337329594-cs-Erl-Hg-S2h0psecwnx-V5t-MTPIp-WCea-D7.jpg"); // Replace with your background
   ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
 
   // Load user avatar
@@ -65,7 +65,7 @@ async function sendGayEmbed(target, user) {
   // Draw username on image
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 30px Sans";
-  ctx.fillText(user.username, 270, 110);
+  ctx.fillText(user.displayname, 270, 110);
 
   // Draw percentage on image
   ctx.fillStyle = "#ffffff";
