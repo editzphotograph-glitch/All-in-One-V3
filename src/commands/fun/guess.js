@@ -62,10 +62,6 @@ async function startCategorySelection(channel, user) {
     collector.stop();
   });
 
-  collector.on("end", async (_, reason) => {
-    if (reason !== "collected")
-      await msg.edit({ content: "Timed out.", embeds: [], components: [] });
-  });
 }
 
 async function startAkinatorGame(msg, user, region) {
