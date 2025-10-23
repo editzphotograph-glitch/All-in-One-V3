@@ -24,6 +24,7 @@
     "url": "https://github.com/RayDev07/All-in-One-V3/issues"
   },
   "dependencies": {
+    "@aqul/akinator-api": "^3.0.1",
     "@lavaclient/queue": "^2.1.1",
     "@lavaclient/spotify": "^3.1.0",
     "@vitalets/google-translate-api": "^9.2.0",
