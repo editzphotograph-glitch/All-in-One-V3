@@ -1,7 +1,7 @@
 const { counterHandler, inviteHandler, presenceHandler } = require("@src/handlers");
 const { cacheReactionRoles } = require("@schemas/ReactionRoles");
 const { getSettings } = require("@schemas/Guild");
-const { initTempVoiceSystem } = require("../../src/events/voice/tempVoiceManager");
+const { initTempVoiceSystem } = require("../../src/events/voice/tempVoice");
 
 /**
  * @param {import('@src/structures').BotClient} client
