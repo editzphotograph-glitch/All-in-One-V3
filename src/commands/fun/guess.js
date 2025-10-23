@@ -7,7 +7,7 @@ const {
   StringSelectMenuBuilder,
   ComponentType,
 } = require("discord.js");
-const AkiSession = require("@schemas/akinatorSession");
+const AkiSession = require("@schemas/AkinatorSession");
 
 module.exports = {
   name: "akinator",
