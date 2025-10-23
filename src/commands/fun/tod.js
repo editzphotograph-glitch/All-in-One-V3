@@ -1,6 +1,9 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const fetch = require("node-fetch");
 
+// Map to track per-user cooldowns
+const cooldowns = new Map();
+
 /**
  * @type {import("@structures/Command")}
  */
@@ -39,10 +42,19 @@ async function startTruthOrDare(target) {
     ? target.followUp({ embeds: [embed], components: [buttonRow] })
     : target.channel.send({ embeds: [embed], components: [buttonRow] }));
 
-  // Keep buttons active for everyone
+  // Collector only for the original button message
   const collector = msg.createMessageComponentCollector({ componentType: 2 });
 
   collector.on("collect", async (btn) => {
+    const userId = btn.user.id;
+
+    // 5-second per-user cooldown
+    if (cooldowns.has(userId)) {
+      return btn.reply({ content: "⏱️ Please wait 5 seconds before clicking again.", ephemeral: true });
+    }
+    cooldowns.set(userId, true);
+    setTimeout(() => cooldowns.delete(userId), 5000);
+
     if (!["truth", "dare", "random"].includes(btn.customId)) return;
     await btn.deferUpdate();
 
@@ -66,7 +78,7 @@ async function startTruthOrDare(target) {
       .setColor("Random")
       .setTimestamp();
 
-    // Send a new embed for each question
+    // Send new embed but reuse original buttons
     await btn.channel.send({ embeds: [questionEmbed], components: [buttonRow] });
   });
 }
