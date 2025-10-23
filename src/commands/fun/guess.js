@@ -1,4 +1,5 @@
-const { Aki, Regions } = require("aki-api");
+const { Aki } = require("aki-api");
+const Regions = require("aki-api/dist/Regions"); // import the regions correctly
 const {
   EmbedBuilder,
   ActionRowBuilder,
