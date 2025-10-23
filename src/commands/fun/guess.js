@@ -1,4 +1,4 @@
-const { Aki } = require("aki-api");
+const { Aki, Regions } = require("aki-api");
 const {
   EmbedBuilder,
   ActionRowBuilder,
@@ -7,7 +7,7 @@ const {
   StringSelectMenuBuilder,
   ComponentType,
 } = require("discord.js");
-const AkiSession = require("@schemas/AkinatorSession");
+const AkiSession = require("@schemas/akinatorSession");
 
 module.exports = {
   name: "akinator",
@@ -33,9 +33,9 @@ async function startCategorySelection(channel, user) {
     .setCustomId("akinator_category")
     .setPlaceholder("Select a category to start!")
     .addOptions([
-      { label: "People", value: "en", emoji: "👤" },
-      { label: "Animals", value: "en_animals", emoji: "🐾" },
-      { label: "Objects", value: "en_objects", emoji: "🎩" },
+      { label: "People", value: Regions.EN, emoji: "👤" },
+      { label: "Animals", value: Regions.EN_ANIMALS, emoji: "🐾" },
+      { label: "Objects", value: Regions.EN_OBJECTS, emoji: "🎩" },
     ]);
 
   const row = new ActionRowBuilder().addComponents(select);
@@ -55,7 +55,7 @@ async function startCategorySelection(channel, user) {
 
   collector.on("collect", async (i) => {
     await i.deferUpdate();
-    const region = i.values[0];
+    const region = i.values[0]; // valid Regions constant
     await startAkinatorGame(msg, user, region);
     collector.stop();
   });
@@ -122,13 +122,16 @@ async function startAkinatorGame(msg, user, region) {
       }
 
       const restartButton = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId("restart_akinator").setLabel("Restart Game").setStyle(ButtonStyle.Primary)
+        new ButtonBuilder()
+          .setCustomId("restart_akinator")
+          .setLabel("Restart Game")
+          .setStyle(ButtonStyle.Primary)
       );
 
       embed = new EmbedBuilder()
         .setTitle("🧞 Guessed Right!")
         .setDescription(
-          `~~‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎\n**${guess.name}**\n${guess.description || ""}\n~~‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎\n**Times Guessed:** ${session.timesGuessed}\n**Last Guessed:** <t:${Math.floor(session.lastGuessed.getTime() / 1000)}:R>`
+          `~~‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎\n**${guess.name}**\n${guess.description || ""}\n~~‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎\n**Times Guessed:** ${session.timesGuessed}\n**Last Guessed:** <t:${Math.floor(session.lastGuessed.getTime() / 1000)}:R>`
         )
         .setImage(guess.absolute_picture_path)
         .setColor("Green");
@@ -145,7 +148,7 @@ async function startAkinatorGame(msg, user, region) {
     }
   });
 
-  // Restart game button handler
+  // Restart game button
   const restartCollector = msg.createMessageComponentCollector({
     componentType: ComponentType.Button,
     filter: (i) => i.user.id === user.id,
