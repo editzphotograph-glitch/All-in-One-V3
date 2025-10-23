@@ -1,5 +1,4 @@
 const { Aki } = require("aki-api");
-const Regions = require("aki-api/dist/Regions"); // import the regions correctly
 const {
   EmbedBuilder,
   ActionRowBuilder,
@@ -34,9 +33,9 @@ async function startCategorySelection(channel, user) {
     .setCustomId("akinator_category")
     .setPlaceholder("Select a category to start!")
     .addOptions([
-      { label: "People", value: Regions.EN, emoji: "👤" },
-      { label: "Animals", value: Regions.EN_ANIMALS, emoji: "🐾" },
-      { label: "Objects", value: Regions.EN_OBJECTS, emoji: "🎩" },
+      { label: "People", value: Regions.en, emoji: "👤" },
+      { label: "Animals", value: Regions.en_animals, emoji: "🐾" },
+      { label: "Objects", value: Regions.en_objects, emoji: "🎩" },
     ]);
 
   const row = new ActionRowBuilder().addComponents(select);
