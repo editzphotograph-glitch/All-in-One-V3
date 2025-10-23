@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const { CACHE_SIZE } = require("@root/config.js");
 const FixedSizeMap = require("fixedsize-map");
+const { ChannelType } = require("discord.js");
 
 const cache = new FixedSizeMap(CACHE_SIZE.TEMP_VOICE || 200);
 
@@ -12,10 +13,7 @@ const Schema = new mongoose.Schema(
     type: { type: String, enum: ["solo", "duo", "trio", "squad", "tenz"], required: true },
   },
   {
-    timestamps: {
-      createdAt: "created_at",
-      updatedAt: "updated_at",
-    },
+    timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
   }
 );
 
@@ -53,10 +51,24 @@ module.exports = {
   /**
    * Delete a temp voice record
    * @param {string} channelId
+   * @param {import('discord.js').Client} [client]
    */
-  async deleteTempVoice(channelId) {
+  async deleteTempVoice(channelId, client) {
     cache.delete(channelId);
-    return Model.deleteOne({ channelId });
+    await Model.deleteOne({ channelId });
+
+    if (client) {
+      // Attempt to delete the Discord channel safely
+      const guilds = client.guilds.cache.values();
+      for (const guild of guilds) {
+        const channel = guild.channels.cache.get(channelId);
+        if (channel) {
+          await channel.delete().catch(() => {});
+          console.log(`🗑️ Deleted Discord temp VC: ${channel.name}`);
+          break; // channel found and deleted
+        }
+      }
+    }
   },
 
   /**
