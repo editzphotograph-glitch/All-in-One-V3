@@ -34,7 +34,7 @@ module.exports = async (client, message) => {
   // if not a command
   if (!isCommand) {
     await automodHandler.performAutomod(message, settings);
-    const countGameHandler = require("@events/message/countGame");
+    const countGameHandler = require("../../src/events/message/countGame");
     await countGameHandler(client, message);
   }
   
