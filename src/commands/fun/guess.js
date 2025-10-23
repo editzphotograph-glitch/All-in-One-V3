@@ -1,3 +1,7 @@
+// Polyfill for File in Node.js
+const { Blob, File } = require("node:buffer");
+globalThis.File = File;
+globalThis.Blob = Blob;
 const { Akinator, AkinatorAnswer } = require("@aqul/akinator-api");
 const {
   EmbedBuilder,
