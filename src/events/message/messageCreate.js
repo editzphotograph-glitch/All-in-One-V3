@@ -32,5 +32,10 @@ module.exports = async (client, message) => {
   if (settings.stats.enabled) await statsHandler.trackMessageStats(message, isCommand, settings);
 
   // if not a command
-  if (!isCommand) await automodHandler.performAutomod(message, settings);
+  if (!isCommand) {
+    await automodHandler.performAutomod(message, settings);
+    const countGameHandler = require("@events/message/countGame");
+    await countGameHandler(client, message);
+  }
+  
 };
