@@ -1,13 +1,13 @@
 const { ChannelType, PermissionFlagsBits } = require("discord.js");
 const { createTempVoice, deleteTempVoice, getAll } = require("@database/schemas/tempvoice");
 
-const MASTER_CATEGORY_ID = "YOUR_CATEGORY_ID"; // Replace
+const MASTER_CATEGORY_ID = "1430673210654855370"; // Replace
 const MASTER_VOICE_IDS = {
-  solo: "MASTER_VOICE_ID_SOLO",
-  duo: "MASTER_VOICE_ID_DUO",
-  trio: "MASTER_VOICE_ID_TRIO",
-  squad: "MASTER_VOICE_ID_SQUAD",
-  tenz: "MASTER_VOICE_ID_TENZ",
+  solo: "1426787282836521123",
+  duo: "1426787378562994287",
+  trio: "1426787536776204440",
+  squad: "1426788200365424692",
+  tenz: "1426788667321749586",
 };
 
 // Max user limits
