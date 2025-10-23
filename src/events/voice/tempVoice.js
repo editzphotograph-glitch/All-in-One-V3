@@ -18,18 +18,14 @@ const LIMITS = {
   tenz: 10,
 };
 
-/**
- * Temp Voice System
- * @param {import('@src/structures').BotClient} client
- */
-module.exports = async (client) => {
-  // Cleanup empty temp VCs on startup
+async function initTempVoiceSystem(client) {
+  // Cleanup on startup
   const saved = await getAll();
   for (const record of saved) {
     const guild = client.guilds.cache.get(record.guildId);
     if (!guild) continue;
-
     const channel = guild.channels.cache.get(record.channelId);
+
     if (!channel) {
       await deleteTempVoice(record.channelId);
       continue;
@@ -41,24 +37,17 @@ module.exports = async (client) => {
     }
   }
 
-  // Voice state updates
   client.on("voiceStateUpdate", async (oldState, newState) => {
-    const guild = newState.guild || oldState.guild;
-    if (!guild) return;
-
-    // Ignore bots
-    if (newState.member?.user.bot) return;
-
+    const guild = newState.guild;
     const joinedId = newState.channelId;
     const leftId = oldState.channelId;
 
-    // Helper: check if a channel is a master
+    if (newState.member.user.bot) return;
+
     const getMasterType = (id) => Object.keys(MASTER_VOICE_IDS).find(t => MASTER_VOICE_IDS[t] === id);
 
-    // --- User joins a master channel ---
     const joinedType = getMasterType(joinedId);
     if (joinedType) {
-      // If user was already in a temp VC, delete old if empty
       if (oldState.channelId) {
         const oldTemp = await getAll();
         const oldRecord = oldTemp.find(r => r.channelId === oldState.channelId);
@@ -95,7 +84,6 @@ module.exports = async (client) => {
       }
     }
 
-    // --- User leaves a temp VC ---
     if (leftId && leftId !== joinedId) {
       const oldChannel = oldState.channel;
       if (!oldChannel) return;
@@ -111,4 +99,6 @@ module.exports = async (client) => {
       }
     }
   });
-};
+}
+
+module.exports = { initTempVoiceSystem };
