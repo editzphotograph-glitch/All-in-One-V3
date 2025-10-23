@@ -1,5 +1,5 @@
 const { ChannelType, PermissionFlagsBits } = require("discord.js");
-const { createTempVoice, deleteTempVoice, getAll } = require("../../database/schemas/tempvoice");
+const { createTempVoice, deleteTempVoice, getAll } = require("../../src/database/schemas/tempvoice");
 
 const MASTER_CATEGORY_ID = "1430673210654855370";
 const MASTER_VOICE_IDS = {
