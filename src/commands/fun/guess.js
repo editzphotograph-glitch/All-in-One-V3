@@ -74,7 +74,7 @@ async function startAkinatorGame(msg, user, region) {
       .setDescription(question)
       .setColor("Gold")
       .setImage(img || null)
-      .setFooter({ text: `Category: ${region.replace("en_", "") || "people"} | Question ${step}` });
+      .setFooter({ text: `Mutta Puffs` });
 
   const answerButtons = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId("0").setLabel("Yes").setStyle(ButtonStyle.Success),
@@ -99,9 +99,9 @@ async function startAkinatorGame(msg, user, region) {
 
     // If Akinator is ready to guess
     if (aki.isWin) {
-      const guessName = aki.suggestionName;
-      const guessDesc = aki.suggestionDescription;
-      const guessImg = aki.suggestionPhoto;
+      const guessName = aki.suggestion_name;
+      const guessDesc = aki.suggestion_desc;
+      const guessImg = aki.suggestion_photo;
 
       const confirmRow = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId("final_yes").setLabel("Yes").setStyle(ButtonStyle.Success),
@@ -113,7 +113,7 @@ async function startAkinatorGame(msg, user, region) {
         .setDescription(`**${guessName}**\n${guessDesc || ""}`)
         .setImage(guessImg)
         .setColor("Orange")
-        .setFooter({ text: `Category: ${region.replace("en_", "") || "people"} | Question ${aki.currentStep + 1}` });
+        .setFooter({ text: `Mutta Puffs` });
 
       await msg.edit({ embeds: [confirmEmbed], components: [confirmRow] });
       return handleFinalConfirmation(msg, user, aki, region);
@@ -135,9 +135,9 @@ function handleFinalConfirmation(msg, user, aki, region) {
   collector.on("collect", async (i) => {
     await i.deferUpdate();
 
-    const guessName = aki.suggestionName;
-    const guessDesc = aki.suggestionDescription;
-    const guessImg = aki.suggestionPhoto;
+    const guessName = aki.suggestion_name;
+    const guessDesc = aki.suggestion_desc;
+    const guessImg = aki.suggestion_photo;
 
     if (i.customId === "final_yes") {
       let session = await AkiSession.findOne({ userId: user.id, resultName: guessName });
@@ -164,7 +164,8 @@ function handleFinalConfirmation(msg, user, aki, region) {
           `**${guessName}**\n${guessDesc || ""}\n**Times Guessed:** ${session.timesGuessed}\n**Last Guessed:** <t:${Math.floor(session.lastGuessed.getTime() / 1000)}:R>`
         )
         .setColor("Green")
-        .setImage(guessImg);
+        .setImage(guessImg)
+        .setFooter({ text: `Mutta Puffs` });
 
       const restartButton = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId("restart_aki").setLabel("Restart Game").setStyle(ButtonStyle.Primary)
@@ -178,7 +179,7 @@ function handleFinalConfirmation(msg, user, aki, region) {
         .setDescription(aki.question)
         .setColor("Gold")
         .setImage(aki.suggestionPhoto || null)
-        .setFooter({ text: `Category: ${region.replace("en_", "") || "people"} | Question ${aki.currentStep + 1}` });
+        .setFooter({ text: `Mutta Puffs` });
 
       const answerButtons = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId("0").setLabel("Yes").setStyle(ButtonStyle.Success),
