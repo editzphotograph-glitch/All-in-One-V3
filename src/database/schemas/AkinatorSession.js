@@ -1,14 +1,16 @@
 const mongoose = require("mongoose");
 
-const Schema = new mongoose.Schema({
-  userId: String,
-  username: String,
-  category: String,
-  resultName: String,
-  description: String,
-  image: String,
-  timesGuessed: { type: Number, default: 1 },
+const AkiSessionSchema = new mongoose.Schema({
+  userId: { type: String, required: true },
+  username: { type: String },
+  category: { type: String },
+  resultName: { type: String },
+  description: { type: String },
+  image: { type: String },
+  timesGuessed: { type: Number, default: 0 },
   lastGuessed: { type: Date, default: Date.now },
-}, { timestamps: true });
+  lastChannelId: { type: String },
+  lastMessageId: { type: String },
+});
 
-module.exports = mongoose.model("AkiSession", Schema);
+module.exports = mongoose.model("AkinatorSession", AkiSessionSchema);
