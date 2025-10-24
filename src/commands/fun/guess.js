@@ -32,16 +32,6 @@ module.exports = {
 };
 
 async function startCategorySelection(channel, user) {
-  const activeSession = await AkiSession.findOne({ userId: user.id });
-  if (activeSession) {
-    const alreadyPlaying = new EmbedBuilder()
-      .setTitle("🧞 Game Already Running")
-      .setDescription(
-        `You already have an ongoing game in <#${activeSession.lastChannelId}>.\nPlease finish or end it before starting a new one.`
-      )
-      .setColor("Red");
-    return channel.send({ embeds: [alreadyPlaying] });
-  }
 
   const select = new StringSelectMenuBuilder()
     .setCustomId("akinator_category")
@@ -229,6 +219,7 @@ async function startAkinatorGame(msg, user, region) {
         }
 
         isGameOver = true;
+        await AkiSession.deleteOne({ userId: user.id });
       } else {
         // User said No → continue game with next question and image
         continue;
