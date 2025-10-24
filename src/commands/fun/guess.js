@@ -31,8 +31,8 @@ module.exports = {
   },
 };
 
+// Category selection
 async function startCategorySelection(channel, user) {
-  // Check for existing session
   const activeSession = await AkiSession.findOne({ userId: user.id });
   if (activeSession && activeSession.lastMessageId) {
     const existingMsg = await channel.messages
@@ -83,6 +83,7 @@ async function startCategorySelection(channel, user) {
   });
 }
 
+// Main game loop
 async function startAkinatorGame(msg, user, region) {
   const aki = new Akinator({ region, childMode: false });
   await aki.start();
@@ -117,32 +118,29 @@ async function startAkinatorGame(msg, user, region) {
       .setImage(img || null)
       .setFooter({ text: "Mutta Puffs" });
 
-  let isGameOver = false;
-
-  while (!isGameOver) {
+  while (true) {
+    // Show current question
     await msg.edit({
       embeds: [getQuestionEmbed(aki.question, aki.currentStep + 1, aki.suggestionPhoto)],
       components: [createAnswerButtons()],
       content: "",
     });
 
-    const answer = await msg.awaitMessageComponent({
+    const interaction = await msg.awaitMessageComponent({
       componentType: ComponentType.Button,
       filter: (i) => i.user.id === user.id,
       time: 5 * 60_000,
     }).catch(() => null);
 
-    if (!answer) {
-      // timeout
+    if (!interaction) {
       await msg.edit({ content: "Game timed out.", components: [] });
-      return;
+      break;
     }
 
-    await answer.deferUpdate();
-    await aki.answer(parseInt(answer.customId));
+    await interaction.deferUpdate();
+    await aki.answer(parseInt(interaction.customId));
 
     if (aki.isWin) {
-      // show final guess
       const guessName = aki.sugestion_name;
       const guessDesc = aki.sugestion_desc;
       const guessImg = aki.sugestion_photo;
@@ -164,21 +162,21 @@ async function startAkinatorGame(msg, user, region) {
         components: [confirmRow],
       });
 
-      const confirm = await msg.awaitMessageComponent({
+      const final = await msg.awaitMessageComponent({
         componentType: ComponentType.Button,
         filter: (i) => i.user.id === user.id,
         time: 60_000,
       }).catch(() => null);
 
-      if (!confirm) {
-        await msg.edit({ content: "No response. Game ended.", components: [] });
-        return;
+      if (!final) {
+        await msg.edit({ content: "Game ended due to no response.", components: [] });
+        break;
       }
 
-      await confirm.deferUpdate();
-      isGameOver = true;
+      await final.deferUpdate();
 
-      if (confirm.customId === "final_yes") {
+      if (final.customId === "final_yes") {
+        // Save session
         let session = await AkiSession.findOne({ userId: user.id, resultName: guessName });
         if (!session) {
           session = await AkiSession.create({
@@ -220,9 +218,23 @@ async function startAkinatorGame(msg, user, region) {
             ),
           ],
         });
+
+        // Listen for restart button
+        const restart = await msg.awaitMessageComponent({
+          componentType: ComponentType.Button,
+          filter: (i) => i.user.id === user.id && i.customId === "restart_aki",
+          time: 5 * 60_000,
+        }).catch(() => null);
+
+        if (restart) {
+          await restart.deferUpdate();
+          await startCategorySelection(msg.channel, user); // restart
+        }
+
+        break;
       } else {
-        // No → continue game automatically
-        isGameOver = false;
+        // User said No → continue game
+        continue;
       }
     }
   }
