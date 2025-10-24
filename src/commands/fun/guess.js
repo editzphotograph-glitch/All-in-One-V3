@@ -10,7 +10,7 @@ const {
   ComponentType,
 } = require("discord.js");
 const { Akinator } = require("@aqul/akinator-api");
-const { AkiSession } = require("@schemas/AkiSession");
+const AkiSession = require("@schemas/AkiSession");
 
 /**
  * @type {import("@structures/Command")}
