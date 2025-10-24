@@ -3,9 +3,6 @@ const Canvas = require("canvas");
 
 const OWNER_ID = "905880683006799882";
 
-/**
- * @type {import("@structures/Command")}
- */
 module.exports = {
   name: "gay",
   description: "Check gay percentage of a user",
@@ -27,17 +24,28 @@ module.exports = {
 
   async messageRun(message, args) {
     const user = message.mentions.users.first() || message.author;
+
+    // 1. Send processing reply
     const processing = await message.reply("🏳️‍🌈 Calculating gay percentage... please wait.");
+
+    // 2. Generate final result
     const result = await generateGayResult(user);
+    await processing.delete().catch(() => null);
+
+    // 3. Edit the processing message to final result
     await processing.edit(result);
   },
 
   async interactionRun(interaction) {
     const user = interaction.options.getUser("user") || interaction.user;
 
-    // Create a placeholder message visible to the user (same style as message reply)
-    await interaction.deferReply({ fetchReply: true });
+    // 1. Defer reply to show "thinking..." (visible only to user)
+    const processing = await interaction.deferReply({ fetchReply: true });
+
+    // 2. Generate final result
     const result = await generateGayResult(user);
+
+    // 3. Edit deferred reply to final result
     await interaction.editReply(result);
   },
 };
