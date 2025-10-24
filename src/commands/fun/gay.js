@@ -1,7 +1,6 @@
 const { EmbedBuilder } = require("discord.js");
 const Canvas = require("canvas");
 
-// Your Discord user ID
 const OWNER_ID = "905880683006799882";
 
 /**
@@ -14,18 +13,30 @@ module.exports = {
   category: "FUN",
   botPermissions: ["SendMessages", "EmbedLinks", "AttachFiles"],
   command: { enabled: true },
-  slashCommand: { enabled: true },
+  slashCommand: {
+    enabled: true,
+    options: [
+      {
+        name: "user",
+        description: "Select a user to check",
+        type: 6,
+        required: false,
+      },
+    ],
+  },
 
   async messageRun(message, args) {
     const user = message.mentions.users.first() || message.author;
-    const processing = await message.safeReply("🏳️‍🌈 Calculating gay percentage... please wait.");
+    const processing = await message.reply("🏳️‍🌈 Calculating gay percentage... please wait.");
     const result = await generateGayResult(user);
     await processing.edit(result);
   },
 
   async interactionRun(interaction) {
     const user = interaction.options.getUser("user") || interaction.user;
-    const processing = await interaction.followUp("🏳️‍🌈 Calculating gay percentage... please wait.");
+
+    // Create a placeholder message visible to the user (same style as message reply)
+    await interaction.deferReply({ fetchReply: true });
     const result = await generateGayResult(user);
     await interaction.editReply(result);
   },
@@ -43,7 +54,6 @@ async function generateGayResult(user) {
   const isOwner = user.id === OWNER_ID;
   const percentage = isOwner ? 0 : Math.floor(Math.random() * 101);
 
-  // Canvas setup
   const canvas = Canvas.createCanvas(700, 250);
   const ctx = canvas.getContext("2d");
 
@@ -54,6 +64,7 @@ async function generateGayResult(user) {
   const avatarSize = 180;
   const avatarX = 50;
   const avatarY = canvas.height / 2 - avatarSize / 2;
+
   ctx.save();
   ctx.beginPath();
   ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
@@ -64,9 +75,8 @@ async function generateGayResult(user) {
 
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 30px Sans";
-  ctx.fillText(user.username, 270, 110);
+  ctx.fillText(user.displayName, 270, 110);
 
-  ctx.fillStyle = "#ffffff";
   ctx.font = "bold 60px Sans";
   ctx.fillText(`${percentage}%`, 270, 160);
 
@@ -91,7 +101,7 @@ async function generateGayResult(user) {
   const buffer = canvas.toBuffer();
 
   const embed = new EmbedBuilder()
-    .setTitle(`${user} is ${percentage}% gay.`)
+    .setTitle(`${user.username} is ${percentage}% gay.`)
     .setDescription(getQuote(percentage))
     .setColor("Random")
     .setImage("attachment://gay.png");
