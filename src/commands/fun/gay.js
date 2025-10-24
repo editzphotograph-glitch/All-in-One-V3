@@ -30,7 +30,6 @@ module.exports = {
 
     // 2. Generate final result
     const result = await generateGayResult(user);
-    await processing.delete().catch(() => null);
 
     // 3. Edit the processing message to final result
     await processing.edit(result);
