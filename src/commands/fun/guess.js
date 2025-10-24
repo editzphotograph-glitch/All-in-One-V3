@@ -26,12 +26,11 @@ module.exports = {
   },
 
   async interactionRun(interaction) {
-    await interaction.deferReply();
+    await interaction.deferReply().catch(() => {});
     await startCategorySelection(interaction.channel, interaction.user);
   },
 };
 
-// Start category selection menu
 async function startCategorySelection(channel, user) {
   const select = new StringSelectMenuBuilder()
     .setCustomId("akinator_category")
@@ -65,7 +64,6 @@ async function startCategorySelection(channel, user) {
   });
 }
 
-// Main Akinator game logic
 async function startAkinatorGame(msg, user, region) {
   const aki = new Akinator({ region, childMode: false });
 
@@ -79,7 +77,7 @@ async function startAkinatorGame(msg, user, region) {
     });
   }
 
-  // Save user session
+  // Save user session (prevents parallel games)
   await AkiSession.findOneAndUpdate(
     { userId: user.id },
     {
@@ -104,7 +102,7 @@ async function startAkinatorGame(msg, user, region) {
 
   const getQuestionEmbed = (question, step, img) =>
     new EmbedBuilder()
-      .setTitle(`🧞 Guess Game`)
+      .setTitle(`🧞 Guess Game - Step ${step}`)
       .setDescription(question)
       .setColor("Gold")
       .setImage(img || null)
@@ -114,11 +112,15 @@ async function startAkinatorGame(msg, user, region) {
 
   while (!isGameOver) {
     // Display current question
-    await msg.edit({
-      embeds: [getQuestionEmbed(aki.question, aki.currentStep + 1, aki.questionImage)],
-      components: [createAnswerButtons()],
-      content: "",
-    });
+    try {
+      await msg.edit({
+        embeds: [getQuestionEmbed(aki.question, aki.currentStep + 1, aki.questionImage)],
+        components: [createAnswerButtons()],
+        content: "",
+      });
+    } catch {
+      // safe to ignore transient race errors on edits
+    }
 
     const interaction = await msg
       .awaitMessageComponent({
@@ -129,26 +131,28 @@ async function startAkinatorGame(msg, user, region) {
       .catch(() => null);
 
     if (!interaction) {
-      await msg.edit({ content: "⏳ Game timed out.", components: [] });
-      await AkiSession.deleteOne({ userId: user.id });
+      await msg.edit({ content: "⏳ Game timed out.", components: [] }).catch(() => {});
+      await AkiSession.deleteOne({ userId: user.id }).catch(() => {});
       break;
     }
 
+    // immediately ack the button, preventing "Interaction failed"
     await interaction.deferUpdate().catch(() => {});
 
+    // forward the answer to the Akinator API
     try {
-      await aki.answer(parseInt(interaction.customId));
+      await aki.answer(parseInt(interaction.customId, 10));
     } catch (err) {
-      console.error("Akinator answer error:", err.message);
+      console.error("Akinator answer error:", err?.message || err);
       await msg.edit({
-        content: "⚠️ Akinator failed to process your answer. Please try again later.",
+        content: "⚠️ Akinator failed to process your answer. The game ended.",
         components: [],
-      });
-      await AkiSession.deleteOne({ userId: user.id });
+      }).catch(() => {});
+      await AkiSession.deleteOne({ userId: user.id }).catch(() => {});
       break;
     }
 
-    // Check if Akinator made a guess
+    // if Akinator reached a guess
     if (aki.isWin) {
       const guessName = aki.sugestion_name;
       const guessDesc = aki.sugestion_desc;
@@ -169,7 +173,7 @@ async function startAkinatorGame(msg, user, region) {
             .setFooter({ text: "Mutta Puffs" }),
         ],
         components: [confirmRow],
-      });
+      }).catch(() => {});
 
       const final = await msg
         .awaitMessageComponent({
@@ -180,15 +184,16 @@ async function startAkinatorGame(msg, user, region) {
         .catch(() => null);
 
       if (!final) {
-        await msg.edit({ content: "⏳ Game ended due to no response.", components: [] });
-        await AkiSession.deleteOne({ userId: user.id });
+        await msg.edit({ content: "⏳ Game ended due to no response.", components: [] }).catch(() => {});
+        await AkiSession.deleteOne({ userId: user.id }).catch(() => {});
         break;
       }
 
+      // defer immediately to avoid "interaction failed"
       await final.deferUpdate().catch(() => {});
 
       if (final.customId === "final_yes") {
-        // ✅ User confirmed Akinator is correct
+        // user confirmed, save or update session stats if you want
         await msg.edit({
           embeds: [
             new EmbedBuilder()
@@ -200,15 +205,12 @@ async function startAkinatorGame(msg, user, region) {
           ],
           components: [
             new ActionRowBuilder().addComponents(
-              new ButtonBuilder()
-                .setCustomId("restart_aki")
-                .setLabel("Restart Game")
-                .setStyle(ButtonStyle.Primary)
+              new ButtonBuilder().setCustomId("restart_aki").setLabel("Restart Game").setStyle(ButtonStyle.Primary)
             ),
           ],
-        });
+        }).catch(() => {});
 
-        await AkiSession.deleteOne({ userId: user.id });
+        await AkiSession.deleteOne({ userId: user.id }).catch(() => {});
 
         const restart = await msg
           .awaitMessageComponent({
@@ -225,20 +227,36 @@ async function startAkinatorGame(msg, user, region) {
 
         isGameOver = true;
       } else if (final.customId === "final_no") {
-        // ❌ User said Akinator was wrong — go back safely
-        await final.deferUpdate().catch(() => {});
+        // user said guess was wrong. Cancel last answer, then explicitly update the question and continue loop.
         try {
-          await aki.cancelAnswer(); // Go back one step, continue questioning
-          continue;
+          await aki.cancelAnswer(); // undo last step
         } catch (err) {
-          console.error("cancelAnswer() failed:", err.message);
+          console.error("cancelAnswer() failed:", err?.message || err);
           await msg.edit({
             content: "⚠️ Akinator couldn’t continue. Please start a new game.",
             components: [],
-          });
-          await AkiSession.deleteOne({ userId: user.id });
+          }).catch(() => {});
+          await AkiSession.deleteOne({ userId: user.id }).catch(() => {});
           break;
         }
+
+        // tiny delay to let the SDK update internal state reliably
+        await new Promise((r) => setTimeout(r, 150));
+
+        // Immediately update the message with the new/current question and answer buttons,
+        // so user sees the next question instead of the "Is this correct?" embed again.
+        try {
+          await msg.edit({
+            embeds: [getQuestionEmbed(aki.question, aki.currentStep + 1, aki.questionImage)],
+            components: [createAnswerButtons()],
+            content: "",
+          });
+        } catch {
+          // ignore transient edit errors
+        }
+
+        // continue the while loop to await the user's next answer
+        continue;
       }
     }
   }
