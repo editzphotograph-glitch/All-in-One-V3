@@ -100,14 +100,6 @@ async function startAkinatorGame(msg, user, region) {
     { upsert: true }
   );
 
-  const getQuestionEmbed = (question, step, img) =>
-    new EmbedBuilder()
-      .setTitle(`🧞 Guess Game - Step ${step}`)
-      .setDescription(question)
-      .setColor("Gold")
-      .setImage(img || null)
-      .setFooter({ text: "Mutta Puffs" });
-
   const createAnswerButtons = () =>
     new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId("0").setLabel("Yes").setStyle(ButtonStyle.Success),
@@ -117,150 +109,121 @@ async function startAkinatorGame(msg, user, region) {
       new ButtonBuilder().setCustomId("4").setLabel("Probably Not").setStyle(ButtonStyle.Primary)
     );
 
-  const updateMessage = async () => {
+  const getQuestionEmbed = (question, step, img) =>
+    new EmbedBuilder()
+      .setTitle(`🧞 Guess Game - Step ${step}`)
+      .setDescription(question)
+      .setColor("Gold")
+      .setImage(img || null)
+      .setFooter({ text: "Mutta Puffs" });
+
+  let isGameOver = false;
+
+  while (!isGameOver) {
     await msg.edit({
       embeds: [getQuestionEmbed(aki.question, aki.currentStep + 1, aki.suggestionPhoto)],
       components: [createAnswerButtons()],
       content: "",
     });
-  };
 
-  await updateMessage();
+    const answer = await msg.awaitMessageComponent({
+      componentType: ComponentType.Button,
+      filter: (i) => i.user.id === user.id,
+      time: 5 * 60_000,
+    }).catch(() => null);
 
-  const answerCollector = msg.createMessageComponentCollector({
-    componentType: ComponentType.Button,
-    filter: (i) => i.user.id === user.id,
-    time: 5 * 60_000,
-  });
-
-  answerCollector.on("collect", async (i) => {
-    await i.deferUpdate();
-    const choice = parseInt(i.customId);
-    await aki.answer(choice);
-
-    if (aki.isWin) {
-      answerCollector.stop();
-      return await handleFinalConfirmation(msg, user, aki, region);
+    if (!answer) {
+      // timeout
+      await msg.edit({ content: "Game timed out.", components: [] });
+      return;
     }
 
-    await updateMessage();
-  });
-}
+    await answer.deferUpdate();
+    await aki.answer(parseInt(answer.customId));
 
-async function handleFinalConfirmation(msg, user, aki, region) {
-  const guessName = aki.sugestion_name;
-  const guessDesc = aki.sugestion_desc;
-  const guessImg = aki.sugestion_photo;
+    if (aki.isWin) {
+      // show final guess
+      const guessName = aki.sugestion_name;
+      const guessDesc = aki.sugestion_desc;
+      const guessImg = aki.sugestion_photo;
 
-  const confirmRow = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId("final_yes").setLabel("Yes").setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId("final_no").setLabel("No").setStyle(ButtonStyle.Danger)
-  );
-
-  const confirmEmbed = new EmbedBuilder()
-    .setTitle("🧞 Is this correct?")
-    .setDescription(`**${guessName}**\n${guessDesc || ""}`)
-    .setImage(guessImg)
-    .setColor("Orange")
-    .setFooter({ text: "Mutta Puffs" });
-
-  await msg.edit({ embeds: [confirmEmbed], components: [confirmRow] });
-
-  const finalCollector = msg.createMessageComponentCollector({
-    componentType: ComponentType.Button,
-    filter: (i) => i.user.id === user.id,
-    time: 60_000,
-    max: 1,
-  });
-
-  finalCollector.on("collect", async (i) => {
-    await i.deferUpdate();
-
-    // disable buttons after click
-    const disabledRow = new ActionRowBuilder().addComponents(
-      confirmRow.components.map((b) => ButtonBuilder.from(b).setDisabled(true))
-    );
-    await msg.edit({ components: [disabledRow] });
-
-    if (i.customId === "final_yes") {
-      let session = await AkiSession.findOne({ userId: user.id, resultName: guessName });
-      if (!session) {
-        session = await AkiSession.create({
-          userId: user.id,
-          username: user.username,
-          category: region,
-          resultName: guessName,
-          description: guessDesc,
-          image: guessImg,
-          timesGuessed: 1,
-          lastGuessed: new Date(),
-          lastChannelId: msg.channel.id,
-          lastMessageId: msg.id,
-        });
-      } else {
-        session.timesGuessed += 1;
-        session.lastGuessed = new Date();
-        session.lastChannelId = msg.channel.id;
-        session.lastMessageId = msg.id;
-        await session.save();
-      }
-
-      const finalEmbed = new EmbedBuilder()
-        .setTitle("🧞 Guessed Right!")
-        .setDescription(
-          `**${guessName}**\n${guessDesc || ""}\n**Times Guessed:** ${session.timesGuessed}\n**Last Guessed:** <t:${Math.floor(
-            session.lastGuessed.getTime() / 1000
-          )}:R>`
-        )
-        .setColor("Green")
-        .setImage(guessImg)
-        .setFooter({ text: "Mutta Puffs" });
-
-      const restartButton = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId("restart_aki").setLabel("Restart Game").setStyle(ButtonStyle.Primary)
+      const confirmRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId("final_yes").setLabel("Yes").setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId("final_no").setLabel("No").setStyle(ButtonStyle.Danger)
       );
 
-      await msg.edit({ embeds: [finalEmbed], components: [restartButton] });
-    } else if (i.customId === "final_no") {
-      // continue the game with normal answer buttons
-      const continueEmbed = new EmbedBuilder()
-        .setTitle("🧞 Guess continues...")
-        .setDescription(aki.question)
-        .setColor("Gold")
-        .setImage(aki.suggestionPhoto || null)
-        .setFooter({ text: "Mutta Puffs" });
-
-      await msg.edit({ embeds: [continueEmbed], components: [createAnswerButtons()] });
-
-      // Restart the main answer collector
-      const answerCollector = msg.createMessageComponentCollector({
-        componentType: ComponentType.Button,
-        filter: (i) => i.user.id === user.id,
-        time: 5 * 60_000,
+      await msg.edit({
+        embeds: [
+          new EmbedBuilder()
+            .setTitle("🧞 Is this correct?")
+            .setDescription(`**${guessName}**\n${guessDesc || ""}`)
+            .setImage(guessImg)
+            .setColor("Orange")
+            .setFooter({ text: "Mutta Puffs" }),
+        ],
+        components: [confirmRow],
       });
 
-      answerCollector.on("collect", async (i) => {
-        await i.deferUpdate();
-        const choice = parseInt(i.customId);
-        await aki.answer(choice);
+      const confirm = await msg.awaitMessageComponent({
+        componentType: ComponentType.Button,
+        filter: (i) => i.user.id === user.id,
+        time: 60_000,
+      }).catch(() => null);
 
-        if (aki.isWin) {
-          answerCollector.stop();
-          return await handleFinalConfirmation(msg, user, aki, region);
+      if (!confirm) {
+        await msg.edit({ content: "No response. Game ended.", components: [] });
+        return;
+      }
+
+      await confirm.deferUpdate();
+      isGameOver = true;
+
+      if (confirm.customId === "final_yes") {
+        let session = await AkiSession.findOne({ userId: user.id, resultName: guessName });
+        if (!session) {
+          session = await AkiSession.create({
+            userId: user.id,
+            username: user.username,
+            category: region,
+            resultName: guessName,
+            description: guessDesc,
+            image: guessImg,
+            timesGuessed: 1,
+            lastGuessed: new Date(),
+            lastChannelId: msg.channel.id,
+            lastMessageId: msg.id,
+          });
+        } else {
+          session.timesGuessed += 1;
+          session.lastGuessed = new Date();
+          session.lastChannelId = msg.channel.id;
+          session.lastMessageId = msg.id;
+          await session.save();
         }
 
         await msg.edit({
           embeds: [
             new EmbedBuilder()
-              .setTitle(`🧞 Guess Game - Step ${aki.currentStep + 1}`)
-              .setDescription(aki.question)
-              .setColor("Gold")
-              .setImage(aki.suggestionPhoto || null)
+              .setTitle("🧞 Guessed Right!")
+              .setDescription(
+                `**${guessName}**\n${guessDesc || ""}\n**Times Guessed:** ${session.timesGuessed}\n**Last Guessed:** <t:${Math.floor(
+                  session.lastGuessed.getTime() / 1000
+                )}:R>`
+              )
+              .setColor("Green")
+              .setImage(guessImg)
               .setFooter({ text: "Mutta Puffs" }),
           ],
-          components: [createAnswerButtons()],
+          components: [
+            new ActionRowBuilder().addComponents(
+              new ButtonBuilder().setCustomId("restart_aki").setLabel("Restart Game").setStyle(ButtonStyle.Primary)
+            ),
+          ],
         });
-      });
+      } else {
+        // No → continue game automatically
+        isGameOver = false;
+      }
     }
-  });
+  }
 }
