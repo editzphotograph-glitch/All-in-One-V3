@@ -30,15 +30,32 @@ module.exports = {
 
   async messageRun(message, args, data) {
     const member = (await message.guild.resolveMember(args[0])) || message.member;
+
+    // Send temporary processing message
+    const processingMsg = await message.channel.send("🎨 Generating rank card... please wait.");
+
     const response = await getRankCard(member, data.settings);
-    await message.safeReply(response);
+    if (typeof response === "string") {
+      return processingMsg.edit(response);
+    }
+
+    // Edit message with generated image
+    await processingMsg.edit({ content: "", files: response.files });
   },
 
   async interactionRun(interaction, data) {
     const user = interaction.options.getUser("user") || interaction.user;
     const member = await interaction.guild.members.fetch(user);
+
+    // Defer reply for interaction (so it doesn’t timeout)
+    await interaction.deferReply();
+
     const response = await getRankCard(member, data.settings);
-    await interaction.followUp(response);
+    if (typeof response === "string") {
+      return interaction.editReply(response);
+    }
+
+    await interaction.editReply({ files: response.files });
   },
 };
 
@@ -67,22 +84,19 @@ async function getRankCard(member, settings) {
       .setXP("current", xpCurrent)
       .setXP("needed", xpNeeded)
 
-      // XP bar gradient (supported)
+      // XP bar gradient
       .setColor("bar", {
         gradient: {
-          colors: ["#00C9FF", "#92FE9D"], // cyan to green
+          colors: ["#00C9FF", "#92FE9D"],
           angle: 90,
         },
       })
 
-      // Gradient-like text using dual color fallback
       .setColor("level", "#FFD700")
       .setColor("rank", "#B993D6")
-
-      // Use image background with subtle gradient overlay look
-      .setBackground("https://i.ibb.co/dsjZY6Q9/images-6.jpg") // gradient-style image
-      .setColor("overlay", "rgba(0,0,0,0.35)") // adds subtle dark overlay
-      .setColor("avatar", EMBED_COLORS.BOT_EMBED); // soft frame tint
+      .setBackground("https://i.ibb.co/dsjZY6Q9/images-6.jpg")
+      .setColor("overlay", "rgba(0,0,0,0.35)")
+      .setColor("avatar", EMBED_COLORS.BOT_EMBED);
 
     const image = await rankCard.toAttachment();
     const attachment = new AttachmentBuilder(image.toBuffer(), { name: "rank.png" });
