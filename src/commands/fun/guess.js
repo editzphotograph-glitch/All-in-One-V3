@@ -25,12 +25,12 @@ module.exports = {
     enabled: true,
   },
 
-  async messageRun(message) {
-    await startAkinatorGame(message, message.author);
+  async messageRun(message, args) {
+    await startSnakeGame(message);
   },
 
   async interactionRun(interaction) {
-    await startAkinatorGame(interaction, interaction.user);
+    await startSnakeGame(interaction);
   },
 };
 
