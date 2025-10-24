@@ -31,24 +31,16 @@ module.exports = {
   },
 };
 
-// Category selection
 async function startCategorySelection(channel, user) {
   const activeSession = await AkiSession.findOne({ userId: user.id });
-  if (activeSession && activeSession.lastMessageId) {
-    const existingMsg = await channel.messages
-      .fetch(activeSession.lastMessageId)
-      .catch(() => null);
-
-    if (existingMsg) {
-      const alreadyPlaying = new EmbedBuilder()
-        .setTitle("🧞 Game Already Running")
-        .setDescription(
-          `You already have an ongoing game in <#${activeSession.lastChannelId}>.\nPlease finish or end it before starting a new one.`
-        )
-        .setColor("Red");
-
-      return channel.send({ embeds: [alreadyPlaying] });
-    }
+  if (activeSession) {
+    const alreadyPlaying = new EmbedBuilder()
+      .setTitle("🧞 Game Already Running")
+      .setDescription(
+        `You already have an ongoing game in <#${activeSession.lastChannelId}>.\nPlease finish or end it before starting a new one.`
+      )
+      .setColor("Red");
+    return channel.send({ embeds: [alreadyPlaying] });
   }
 
   const select = new StringSelectMenuBuilder()
@@ -83,11 +75,11 @@ async function startCategorySelection(channel, user) {
   });
 }
 
-// Main game loop
 async function startAkinatorGame(msg, user, region) {
   const aki = new Akinator({ region, childMode: false });
   await aki.start();
 
+  // Save active session
   await AkiSession.findOneAndUpdate(
     { userId: user.id },
     {
@@ -121,9 +113,9 @@ async function startAkinatorGame(msg, user, region) {
   let isGameOver = false;
 
   while (!isGameOver) {
-    // Show current question
+    // Show current question with image
     await msg.edit({
-      embeds: [getQuestionEmbed(aki.question, aki.currentStep + 1, aki.suggestionPhoto)],
+      embeds: [getQuestionEmbed(aki.question, aki.currentStep + 1, aki.questionImage)],
       components: [createAnswerButtons()],
       content: "",
     });
@@ -136,14 +128,14 @@ async function startAkinatorGame(msg, user, region) {
 
     if (!interaction) {
       await msg.edit({ content: "Game timed out.", components: [] });
-  // Clear session
-      await AkiSession.deleteOne({ userId: user.id }).catch(() => {});
+      await AkiSession.deleteOne({ userId: user.id });
       break;
     }
 
     await interaction.deferUpdate();
     await aki.answer(parseInt(interaction.customId));
 
+    // Check if Akinator has a guess
     if (aki.isWin) {
       const guessName = aki.sugestion_name;
       const guessDesc = aki.sugestion_desc;
@@ -174,7 +166,7 @@ async function startAkinatorGame(msg, user, region) {
 
       if (!final) {
         await msg.edit({ content: "Game ended due to no response.", components: [] });
-        await AkiSession.deleteOne({ userId: user.id }).catch(() => {});
+        await AkiSession.deleteOne({ userId: user.id });
         break;
       }
 
@@ -223,7 +215,8 @@ async function startAkinatorGame(msg, user, region) {
           ],
         });
 
-        // Listen for restart button
+        await AkiSession.deleteOne({ userId: user.id });
+
         const restart = await msg.awaitMessageComponent({
           componentType: ComponentType.Button,
           filter: (i) => i.user.id === user.id && i.customId === "restart_aki",
@@ -232,14 +225,13 @@ async function startAkinatorGame(msg, user, region) {
 
         if (restart) {
           await restart.deferUpdate();
-          await startCategorySelection(msg.channel, user); // restart new game
+          await startCategorySelection(msg.channel, user);
         }
 
         isGameOver = true;
-        await AkiSession.deleteOne({ userId: user.id }).catch(() => {});
       } else {
-        // User said No → continue game
-        continue; // will fetch next question automatically
+        // User said No → continue game with next question and image
+        continue;
       }
     }
   }
