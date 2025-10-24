@@ -49,17 +49,15 @@ async function getRankCard(member, settings) {
   const memberStats = await getMemberStats(guild.id, user.id);
   if (!memberStats.xp) return `${user.username} is not ranked yet!`;
 
-  // Leaderboard position
   const lb = await getXpLb(guild.id, 100);
   const pos = lb.findIndex((doc) => doc.member_id === user.id) + 1 || 0;
 
-  // XP data
   const xpNeeded = memberStats.level * memberStats.level * 100;
   const xpCurrent = memberStats.xp;
   const level = memberStats.level;
 
   try {
-    // Build modern rank card
+    // Construct rank card (using only supported methods)
     const rankCard = new Canvas.RankCard()
       .setAddon("xp", true)
       .setAddon("rank", true)
@@ -71,7 +69,7 @@ async function getRankCard(member, settings) {
       .setXP("current", xpCurrent)
       .setXP("needed", xpNeeded)
 
-      // Gradient XP bar (blue → purple)
+      // Gradient XP bar
       .setColor("bar", {
         gradient: {
           colors: ["#00C9FF", "#92FE9D"],
@@ -93,27 +91,22 @@ async function getRankCard(member, settings) {
         },
       })
 
-      // Circular avatar frame
-      .setAvatarBorder({
-        color: EMBED_COLORS.BOT_EMBED,
-        width: 6,
-        rounded: true,
-      })
-
-      // Layered background: gradient + image overlay
+      // Add soft background gradient + overlay
       .setBackgroundGradient({
-        colors: ["#1f1c2c", "#928DAB"], // dark violet to gray gradient
+        colors: ["#1f1c2c", "#928DAB"],
         angle: 135,
       })
       .setBackgroundOverlay({
-        image: "https://i.imgur.com/hwgvX0t.png", // your image overlay
-        opacity: 0.25, // 25% opacity blend with gradient
-        blendMode: "overlay", // soft overlay look
-      });
+        image: "https://i.imgur.com/hwgvX0t.png",
+        opacity: 0.25,
+        blendMode: "overlay",
+      })
+
+      // Simulate avatar frame using glow
+      .setColor("avatar", EMBED_COLORS.BOT_EMBED); // gives subtle glow border
 
     const image = await rankCard.toAttachment();
     const attachment = new AttachmentBuilder(image.toBuffer(), { name: "rank.png" });
-
     return { files: [attachment] };
   } catch (err) {
     console.error("Rank card generation failed:", err);
