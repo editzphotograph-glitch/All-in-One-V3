@@ -61,7 +61,6 @@ async function startCategorySelection(channel, user) {
     await startAkinatorGame(msg, user, region);
     collector.stop();
   });
-
 }
 
 async function startAkinatorGame(msg, user, region) {
@@ -74,7 +73,7 @@ async function startAkinatorGame(msg, user, region) {
       .setDescription(question)
       .setColor("Gold")
       .setImage(img || null)
-      .setFooter({ text: `Mutta Puffs` });
+      .setFooter({ text: "Mutta Puffs" });
 
   const answerButtons = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId("0").setLabel("Yes").setStyle(ButtonStyle.Success),
@@ -84,21 +83,27 @@ async function startAkinatorGame(msg, user, region) {
     new ButtonBuilder().setCustomId("4").setLabel("Probably Not").setStyle(ButtonStyle.Primary)
   );
 
-  await msg.edit({ embeds: [getQuestionEmbed(aki.question, aki.currentStep + 1)], components: [answerButtons], content: "" });
+  await msg.edit({
+    embeds: [getQuestionEmbed(aki.question, aki.currentStep + 1)],
+    components: [answerButtons],
+    content: "",
+  });
 
-  const collector = msg.createMessageComponentCollector({
+  const questionCollector = msg.createMessageComponentCollector({
     componentType: ComponentType.Button,
-    filter: (i) => i.user.id === user.id,
+    filter: (i) => i.user.id === user.id && ["0", "1", "2", "3", "4"].includes(i.customId),
     time: 5 * 60_000,
   });
 
-  collector.on("collect", async (i) => {
+  questionCollector.on("collect", async (i) => {
     await i.deferUpdate();
     const choice = parseInt(i.customId);
     await aki.answer(choice);
 
     // If Akinator is ready to guess
     if (aki.isWin) {
+      questionCollector.stop(); // stop question collector before confirmation
+
       const guessName = aki.sugestion_name;
       const guessDesc = aki.sugestion_desc;
       const guessImg = aki.sugestion_photo;
@@ -113,26 +118,30 @@ async function startAkinatorGame(msg, user, region) {
         .setDescription(`**${guessName}**\n${guessDesc || ""}`)
         .setImage(guessImg)
         .setColor("Orange")
-        .setFooter({ text: `Mutta Puffs` });
+        .setFooter({ text: "Mutta Puffs" });
 
       await msg.edit({ embeds: [confirmEmbed], components: [confirmRow] });
       return handleFinalConfirmation(msg, user, aki, region);
     }
 
     // Continue asking questions
-    await msg.edit({ embeds: [getQuestionEmbed(aki.question, aki.currentStep + 1, aki.suggestionPhoto)], components: [answerButtons] });
+    await msg.edit({
+      embeds: [getQuestionEmbed(aki.question, aki.currentStep + 1, aki.suggestionPhoto)],
+      components: [answerButtons],
+    });
   });
 }
 
 function handleFinalConfirmation(msg, user, aki, region) {
-  const collector = msg.createMessageComponentCollector({
+  const finalCollector = msg.createMessageComponentCollector({
     componentType: ComponentType.Button,
-    filter: (i) => i.user.id === user.id,
+    filter: (i) =>
+      i.user.id === user.id && (i.customId === "final_yes" || i.customId === "final_no"),
     time: 60_000,
     max: 1,
   });
 
-  collector.on("collect", async (i) => {
+  finalCollector.on("collect", async (i) => {
     await i.deferUpdate();
 
     const guessName = aki.sugestion_name;
@@ -161,11 +170,13 @@ function handleFinalConfirmation(msg, user, aki, region) {
       const finalEmbed = new EmbedBuilder()
         .setTitle("🧞 Guessed Right!")
         .setDescription(
-          `**${guessName}**\n${guessDesc || ""}\n**Times Guessed:** ${session.timesGuessed}\n**Last Guessed:** <t:${Math.floor(session.lastGuessed.getTime() / 1000)}:R>`
+          `**${guessName}**\n${guessDesc || ""}\n**Times Guessed:** ${session.timesGuessed}\n**Last Guessed:** <t:${Math.floor(
+            session.lastGuessed.getTime() / 1000
+          )}:R>`
         )
         .setColor("Green")
         .setImage(guessImg)
-        .setFooter({ text: `Mutta Puffs` });
+        .setFooter({ text: "Mutta Puffs" });
 
       const restartButton = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId("restart_aki").setLabel("Restart Game").setStyle(ButtonStyle.Primary)
@@ -174,12 +185,14 @@ function handleFinalConfirmation(msg, user, aki, region) {
       await msg.edit({ embeds: [finalEmbed], components: [restartButton] });
     } else if (i.customId === "final_no") {
       // Continue game
+      await aki.cancelAnswer(); // go back a question
+
       const continueEmbed = new EmbedBuilder()
         .setTitle("🧞 Guess continues...")
         .setDescription(aki.question)
         .setColor("Gold")
         .setImage(aki.suggestionPhoto || null)
-        .setFooter({ text: `Mutta Puffs` });
+        .setFooter({ text: "Mutta Puffs" });
 
       const answerButtons = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId("0").setLabel("Yes").setStyle(ButtonStyle.Success),
@@ -190,6 +203,8 @@ function handleFinalConfirmation(msg, user, aki, region) {
       );
 
       await msg.edit({ embeds: [continueEmbed], components: [answerButtons] });
+      // Restart the question collector
+      await startAkinatorGame(msg, user, region);
     }
   });
 }
