@@ -12,18 +12,22 @@ module.exports = {
   description: "Check gay percentage of a user",
   cooldown: 10,
   category: "FUN",
-  botPermissions: ["SendMessages", "EmbedLinks"],
+  botPermissions: ["SendMessages", "EmbedLinks", "AttachFiles"],
   command: { enabled: true },
   slashCommand: { enabled: true },
 
   async messageRun(message, args) {
     const user = message.mentions.users.first() || message.author;
-    await sendGayEmbed(message, user);
+    const processing = await message.safeReply("🏳️‍🌈 Calculating gay percentage... please wait.");
+    const result = await generateGayResult(user);
+    await processing.edit(result);
   },
 
   async interactionRun(interaction) {
     const user = interaction.options.getUser("user") || interaction.user;
-    await sendGayEmbed(interaction, user);
+    const processing = await interaction.followUp("🏳️‍🌈 Calculating gay percentage... please wait.");
+    const result = await generateGayResult(user);
+    await interaction.editReply(result);
   },
 };
 
@@ -35,7 +39,7 @@ function getQuote(percentage) {
   return "🌈 • **Full rainbow energy!**";
 }
 
-async function sendGayEmbed(target, user) {
+async function generateGayResult(user) {
   const isOwner = user.id === OWNER_ID;
   const percentage = isOwner ? 0 : Math.floor(Math.random() * 101);
 
@@ -43,73 +47,54 @@ async function sendGayEmbed(target, user) {
   const canvas = Canvas.createCanvas(700, 250);
   const ctx = canvas.getContext("2d");
 
-  // Load LGBTQ background
-  const background = await Canvas.loadImage("https://i.ibb.co/H8S5CgW/240-F-337329594-cs-Erl-Hg-S2h0psecwnx-V5t-MTPIp-WCea-D7.jpg"); // Replace with your background
+  const background = await Canvas.loadImage("https://i.ibb.co/H8S5CgW/240-F-337329594-cs-Erl-Hg-S2h0psecwnx-V5t-MTPIp-WCea-D7.jpg");
   ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
 
-  // Load user avatar
   const avatar = await Canvas.loadImage(user.displayAvatarURL({ extension: "png", size: 512 }));
-
-  // Draw avatar in circle
   const avatarSize = 180;
   const avatarX = 50;
   const avatarY = canvas.height / 2 - avatarSize / 2;
   ctx.save();
   ctx.beginPath();
-  ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2, true);
+  ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
   ctx.closePath();
   ctx.clip();
   ctx.drawImage(avatar, avatarX, avatarY, avatarSize, avatarSize);
   ctx.restore();
 
-  // Draw username on image
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 30px Sans";
-  ctx.fillText(user.displayName, 270, 110);
+  ctx.fillText(user.username, 270, 110);
 
-  // Draw percentage on image
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 60px Sans";
   ctx.fillText(`${percentage}%`, 270, 160);
 
-  // Draw progress bar
-  const barX = 270;
-  const barY = 180;
-  const barWidth = 350;
-  const barHeight = 25;
-
-  // Background bar
+  const barX = 270, barY = 180, barWidth = 350, barHeight = 25;
   ctx.fillStyle = "#555555";
   ctx.fillRect(barX, barY, barWidth, barHeight);
 
-  // Filled bar according to percentage
   const fillWidth = (barWidth * percentage) / 100;
   const gradient = ctx.createLinearGradient(barX, barY, barX + barWidth, barY);
-  gradient.addColorStop(0, "#ff0000"); // Red
-  gradient.addColorStop(0.25, "#ff7f00"); // Orange
-  gradient.addColorStop(0.5, "#ffff00"); // Yellow
-  gradient.addColorStop(0.75, "#00ff00"); // Green
-  gradient.addColorStop(1, "#0000ff"); // Blue
+  gradient.addColorStop(0, "#ff0000");
+  gradient.addColorStop(0.25, "#ff7f00");
+  gradient.addColorStop(0.5, "#ffff00");
+  gradient.addColorStop(0.75, "#00ff00");
+  gradient.addColorStop(1, "#0000ff");
   ctx.fillStyle = gradient;
   ctx.fillRect(barX, barY, fillWidth, barHeight);
 
-  // Optional border for the bar
   ctx.strokeStyle = "#ffffff";
   ctx.lineWidth = 2;
   ctx.strokeRect(barX, barY, barWidth, barHeight);
 
   const buffer = canvas.toBuffer();
 
-  // Embed with user mention and description
   const embed = new EmbedBuilder()
-    .setTitle(`${user} is ${percentage}% gay.`) // Mention user
+    .setTitle(`${user} is ${percentage}% gay.`)
     .setDescription(getQuote(percentage))
     .setColor("Random")
     .setImage("attachment://gay.png");
 
-  if (target.followUp) {
-    await target.followUp({ embeds: [embed], files: [{ attachment: buffer, name: "gay.png" }] });
-  } else {
-    await target.channel.send({ embeds: [embed], files: [{ attachment: buffer, name: "gay.png" }] });
-  }
+  return { embeds: [embed], files: [{ attachment: buffer, name: "gay.png" }] };
 }
