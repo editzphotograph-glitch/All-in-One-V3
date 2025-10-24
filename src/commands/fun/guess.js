@@ -2,7 +2,7 @@ const { Blob, File } = require("node:buffer");
 globalThis.File = File;
 globalThis.Blob = Blob;
 
-const { Akinator } = require("@aqul/akinator-api");
+const { Akinator, AkinatorAnswer } = require("@aqul/akinator-api");
 const {
   EmbedBuilder,
   ActionRowBuilder,
@@ -66,11 +66,11 @@ async function startCategorySelection(channel, user) {
 
 async function startAkinatorGame(msg, user, region) {
   const aki = new Akinator({ region, childMode: false });
+
   try {
     await aki.start();
   } catch (err) {
-    console.error("Akinator start error:", err.message);
-    return msg.edit({ content: "❌ Failed to start Akinator. Please try again later.", components: [] });
+    return msg.edit({ content: "⚠️ Failed to start Akinator. Please try again later.", components: [] });
   }
 
   await AkiSession.findOneAndUpdate(
@@ -106,15 +106,12 @@ async function startAkinatorGame(msg, user, region) {
   let isGameOver = false;
 
   while (!isGameOver) {
-    try {
-      await msg.edit({
-        embeds: [getQuestionEmbed(aki.question, aki.currentStep + 1, aki.questionImage)],
-        components: [createAnswerButtons()],
-        content: "",
-      });
-    } catch {
-      // ignore harmless edit race
-    }
+    // Show question
+    await msg.edit({
+      embeds: [getQuestionEmbed(aki.question, aki.currentStep + 1, aki.questionImage)],
+      components: [createAnswerButtons()],
+      content: "",
+    });
 
     const interaction = await msg
       .awaitMessageComponent({
@@ -125,7 +122,7 @@ async function startAkinatorGame(msg, user, region) {
       .catch(() => null);
 
     if (!interaction) {
-      await msg.edit({ content: "Game timed out.", components: [] });
+      await msg.edit({ content: "⏳ Game timed out.", components: [] });
       await AkiSession.deleteOne({ userId: user.id });
       break;
     }
@@ -137,14 +134,13 @@ async function startAkinatorGame(msg, user, region) {
     } catch (err) {
       console.error("Akinator answer error:", err.message);
       await msg.edit({
-        content: "⚠️ Akinator failed to process your answer. The game ended unexpectedly.",
+        content: "⚠️ Akinator failed to process this answer. Please try again.",
         components: [],
       });
       await AkiSession.deleteOne({ userId: user.id });
       break;
     }
 
-    // If Akinator thinks it has a guess
     if (aki.isWin) {
       const guessName = aki.sugestion_name;
       const guessDesc = aki.sugestion_desc;
@@ -176,7 +172,7 @@ async function startAkinatorGame(msg, user, region) {
         .catch(() => null);
 
       if (!final) {
-        await msg.edit({ content: "Game ended due to no response.", components: [] });
+        await msg.edit({ content: "⏳ Game ended due to no response.", components: [] });
         await AkiSession.deleteOne({ userId: user.id });
         break;
       }
@@ -211,9 +207,9 @@ async function startAkinatorGame(msg, user, region) {
             new EmbedBuilder()
               .setTitle("🧞 Guessed Right!")
               .setDescription(
-                `**${guessName}**\n${guessDesc || ""}\n**Times Guessed:** ${session.timesGuessed}\n**Last Guessed:** <t:${Math.floor(
-                  session.lastGuessed.getTime() / 1000
-                )}:R>`
+                `**${guessName}**\n${guessDesc || ""}\n**Times Guessed:** ${
+                  session.timesGuessed
+                }\n**Last Guessed:** <t:${Math.floor(session.lastGuessed.getTime() / 1000)}:R>`
               )
               .setColor("Green")
               .setImage(guessImg)
@@ -227,7 +223,6 @@ async function startAkinatorGame(msg, user, region) {
         });
 
         await AkiSession.deleteOne({ userId: user.id });
-
         const restart = await msg
           .awaitMessageComponent({
             componentType: ComponentType.Button,
@@ -242,12 +237,12 @@ async function startAkinatorGame(msg, user, region) {
         }
 
         isGameOver = true;
-        await AkiSession.deleteOne({ userId: user.id });
       } else if (final.customId === "final_no") {
         try {
-          await aki.back();
+          await aki.cancelAnswer(); // back one step safely
+          continue;
         } catch (err) {
-          console.error("Akinator back error:", err.message);
+          console.error("cancelAnswer() failed:", err.message);
           await msg.edit({
             content: "⚠️ Akinator couldn’t continue. Please start a new game.",
             components: [],
@@ -255,7 +250,6 @@ async function startAkinatorGame(msg, user, region) {
           await AkiSession.deleteOne({ userId: user.id });
           break;
         }
-        continue;
       }
     }
   }
