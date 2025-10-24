@@ -57,7 +57,6 @@ async function getRankCard(member, settings) {
   const level = memberStats.level;
 
   try {
-    // Construct rank card (using only supported methods)
     const rankCard = new Canvas.RankCard()
       .setAddon("xp", true)
       .setAddon("rank", true)
@@ -69,41 +68,22 @@ async function getRankCard(member, settings) {
       .setXP("current", xpCurrent)
       .setXP("needed", xpNeeded)
 
-      // Gradient XP bar
+      // XP bar gradient (supported)
       .setColor("bar", {
         gradient: {
-          colors: ["#00C9FF", "#92FE9D"],
+          colors: ["#00C9FF", "#92FE9D"], // cyan to green
           angle: 90,
         },
       })
 
-      // Gradient level and rank text
-      .setColor("level", {
-        gradient: {
-          colors: ["#FFD700", "#FF8C00"],
-          angle: 45,
-        },
-      })
-      .setColor("rank", {
-        gradient: {
-          colors: ["#B993D6", "#8CA6DB"],
-          angle: 90,
-        },
-      })
+      // Gradient-like text using dual color fallback
+      .setColor("level", "#FFD700")
+      .setColor("rank", "#B993D6")
 
-      // Add soft background gradient + overlay
-      .setBackgroundGradient({
-        colors: ["#1f1c2c", "#928DAB"],
-        angle: 135,
-      })
-      .setBackgroundOverlay({
-        image: "https://i.imgur.com/hwgvX0t.png",
-        opacity: 0.25,
-        blendMode: "overlay",
-      })
-
-      // Simulate avatar frame using glow
-      .setColor("avatar", EMBED_COLORS.BOT_EMBED); // gives subtle glow border
+      // Use image background with subtle gradient overlay look
+      .setBackground("https://i.imgur.com/aYl2kIU.jpeg") // gradient-style image
+      .setColor("overlay", "rgba(0,0,0,0.35)") // adds subtle dark overlay
+      .setColor("avatar", EMBED_COLORS.BOT_EMBED); // soft frame tint
 
     const image = await rankCard.toAttachment();
     const attachment = new AttachmentBuilder(image.toBuffer(), { name: "rank.png" });
