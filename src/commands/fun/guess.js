@@ -1,3 +1,6 @@
+const { Blob, File } = require("node:buffer");
+globalThis.File = File;
+globalThis.Blob = Blob;
 const {
   EmbedBuilder,
   ActionRowBuilder,
