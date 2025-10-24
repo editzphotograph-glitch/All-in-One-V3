@@ -1,6 +1,7 @@
 const { Blob, File } = require("node:buffer");
 globalThis.File = File;
 globalThis.Blob = Blob;
+
 const {
   EmbedBuilder,
   ActionRowBuilder,
@@ -8,8 +9,8 @@ const {
   ButtonStyle,
   ComponentType,
 } = require("discord.js");
-const { Akinator, AkinatorAnswer } = require("@aqul/akinator-api");
-const { AkiSession } = require("@schemas/AkiSession"); // your Mongo model
+const { Akinator } = require("@aqul/akinator-api");
+const { AkiSession } = require("@schemas/AkiSession");
 
 /**
  * @type {import("@structures/Command")}
@@ -28,23 +29,24 @@ module.exports = {
     enabled: true,
   },
 
-  async messageRun(message, args) {
-    await startSnakeGame(message);
+  async messageRun(message) {
+    await startAkinatorGame(message, message.author);
   },
 
   async interactionRun(interaction) {
-    await startSnakeGame(interaction);
+    await startAkinatorGame(interaction, interaction.user);
   },
 };
 
 async function startAkinatorGame(ctx, user, region = "en") {
-  // check existing session
+  // prevent duplicate games
   const existing = await AkiSession.findOne({ userId: user.id });
-  if (existing)
+  if (existing) {
     return ctx.reply({
       content: `You already have an ongoing game in <#${existing.channelId}>. Please finish or end it before starting a new one.`,
       ephemeral: true,
     });
+  }
 
   const aki = new Akinator({ region, childMode: false });
   await aki.start();
@@ -83,6 +85,7 @@ async function startAkinatorGame(ctx, user, region = "en") {
     await i.deferUpdate().catch(() => {});
     try {
       await aki.answer(Number(i.customId));
+
       if (aki.isWin) {
         const guessEmbed = new EmbedBuilder()
           .setTitle("🤔 Is this correct?")
@@ -99,13 +102,12 @@ async function startAkinatorGame(ctx, user, region = "en") {
             .setStyle(ButtonStyle.Success),
           new ButtonBuilder()
             .setCustomId("final_no")
-            .setLabel("No, try again")
+            .setLabel("No, start new game")
             .setStyle(ButtonStyle.Danger)
         );
 
         await msg.edit({ embeds: [guessEmbed], components: [finalRow] });
 
-        // Wait for yes/no final
         const confirm = await msg
           .awaitMessageComponent({
             componentType: ComponentType.Button,
@@ -126,7 +128,7 @@ async function startAkinatorGame(ctx, user, region = "en") {
         if (confirm.customId === "final_yes") {
           await confirm.deferUpdate().catch(() => {});
           await msg.edit({
-            content: `🎉 Great! guessed it right.`,
+            content: `🎉 Great! Guessed it right.`,
             embeds: [],
             components: [],
           });
@@ -136,14 +138,12 @@ async function startAkinatorGame(ctx, user, region = "en") {
 
         if (confirm.customId === "final_no") {
           await confirm.deferUpdate().catch(() => {});
-          // Restart game with same category
           await msg.edit({
             content: "🔄 Restarting game with same category...",
             embeds: [],
             components: [],
           });
           await AkiSession.deleteOne({ userId: user.id });
-          // Start new game on same embed
           return startAkinatorGame(ctx, user, region);
         }
       } else {
