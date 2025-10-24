@@ -2,7 +2,7 @@ const { Blob, File } = require("node:buffer");
 globalThis.File = File;
 globalThis.Blob = Blob;
 
-const { Akinator, AkinatorAnswer } = require("@aqul/akinator-api");
+const { Akinator } = require("@aqul/akinator-api");
 const {
   EmbedBuilder,
   ActionRowBuilder,
@@ -73,13 +73,13 @@ async function startCategorySelection(channel, user) {
     componentType: ComponentType.StringSelect,
     time: 30_000,
     filter: (i) => i.user.id === user.id,
+    max: 1,
   });
 
   collector.on("collect", async (i) => {
     await i.deferUpdate();
     const region = i.values[0];
     await startAkinatorGame(msg, user, region);
-    collector.stop();
   });
 }
 
@@ -108,73 +108,79 @@ async function startAkinatorGame(msg, user, region) {
       .setImage(img || null)
       .setFooter({ text: "Mutta Puffs" });
 
-  const answerButtons = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId("0").setLabel("Yes").setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId("1").setLabel("No").setStyle(ButtonStyle.Danger),
-    new ButtonBuilder().setCustomId("2").setLabel("Don't Know").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId("3").setLabel("Probably").setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId("4").setLabel("Probably Not").setStyle(ButtonStyle.Primary)
-  );
+  const createAnswerButtons = () =>
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId("0").setLabel("Yes").setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId("1").setLabel("No").setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId("2").setLabel("Don't Know").setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId("3").setLabel("Probably").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("4").setLabel("Probably Not").setStyle(ButtonStyle.Primary)
+    );
 
-  await msg.edit({
-    embeds: [getQuestionEmbed(aki.question, aki.currentStep + 1)],
-    components: [answerButtons],
-    content: "",
-  });
+  const updateMessage = async () => {
+    await msg.edit({
+      embeds: [getQuestionEmbed(aki.question, aki.currentStep + 1, aki.suggestionPhoto)],
+      components: [createAnswerButtons()],
+      content: "",
+    });
+  };
 
-  const collector = msg.createMessageComponentCollector({
+  await updateMessage();
+
+  const answerCollector = msg.createMessageComponentCollector({
     componentType: ComponentType.Button,
     filter: (i) => i.user.id === user.id,
     time: 5 * 60_000,
   });
 
-  collector.on("collect", async (i) => {
+  answerCollector.on("collect", async (i) => {
     await i.deferUpdate();
     const choice = parseInt(i.customId);
     await aki.answer(choice);
 
     if (aki.isWin) {
-      const guessName = aki.sugestion_name;
-      const guessDesc = aki.sugestion_desc;
-      const guessImg = aki.sugestion_photo;
-
-      const confirmRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId("final_yes").setLabel("Yes").setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId("final_no").setLabel("No").setStyle(ButtonStyle.Danger)
-      );
-
-      const confirmEmbed = new EmbedBuilder()
-        .setTitle("🧞 Is this correct?")
-        .setDescription(`**${guessName}**\n${guessDesc || ""}`)
-        .setImage(guessImg)
-        .setColor("Orange")
-        .setFooter({ text: "Mutta Puffs" });
-
-      await msg.edit({ embeds: [confirmEmbed], components: [confirmRow] });
-      return handleFinalConfirmation(msg, user, aki, region);
+      answerCollector.stop();
+      return await handleFinalConfirmation(msg, user, aki, region);
     }
 
-    await msg.edit({
-      embeds: [getQuestionEmbed(aki.question, aki.currentStep + 1, aki.suggestionPhoto)],
-      components: [answerButtons],
-    });
+    await updateMessage();
   });
 }
 
-function handleFinalConfirmation(msg, user, aki, region) {
-  const collector = msg.createMessageComponentCollector({
+async function handleFinalConfirmation(msg, user, aki, region) {
+  const guessName = aki.sugestion_name;
+  const guessDesc = aki.sugestion_desc;
+  const guessImg = aki.sugestion_photo;
+
+  const confirmRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId("final_yes").setLabel("Yes").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId("final_no").setLabel("No").setStyle(ButtonStyle.Danger)
+  );
+
+  const confirmEmbed = new EmbedBuilder()
+    .setTitle("🧞 Is this correct?")
+    .setDescription(`**${guessName}**\n${guessDesc || ""}`)
+    .setImage(guessImg)
+    .setColor("Orange")
+    .setFooter({ text: "Mutta Puffs" });
+
+  await msg.edit({ embeds: [confirmEmbed], components: [confirmRow] });
+
+  const finalCollector = msg.createMessageComponentCollector({
     componentType: ComponentType.Button,
     filter: (i) => i.user.id === user.id,
     time: 60_000,
     max: 1,
   });
 
-  collector.on("collect", async (i) => {
+  finalCollector.on("collect", async (i) => {
     await i.deferUpdate();
 
-    const guessName = aki.sugestion_name;
-    const guessDesc = aki.sugestion_desc;
-    const guessImg = aki.sugestion_photo;
+    // disable buttons after click
+    const disabledRow = new ActionRowBuilder().addComponents(
+      confirmRow.components.map((b) => ButtonBuilder.from(b).setDisabled(true))
+    );
+    await msg.edit({ components: [disabledRow] });
 
     if (i.customId === "final_yes") {
       let session = await AkiSession.findOne({ userId: user.id, resultName: guessName });
@@ -211,14 +217,12 @@ function handleFinalConfirmation(msg, user, aki, region) {
         .setFooter({ text: "Mutta Puffs" });
 
       const restartButton = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("restart_aki")
-          .setLabel("Restart Game")
-          .setStyle(ButtonStyle.Primary)
+        new ButtonBuilder().setCustomId("restart_aki").setLabel("Restart Game").setStyle(ButtonStyle.Primary)
       );
 
       await msg.edit({ embeds: [finalEmbed], components: [restartButton] });
     } else if (i.customId === "final_no") {
+      // continue the game with normal answer buttons
       const continueEmbed = new EmbedBuilder()
         .setTitle("🧞 Guess continues...")
         .setDescription(aki.question)
@@ -226,15 +230,37 @@ function handleFinalConfirmation(msg, user, aki, region) {
         .setImage(aki.suggestionPhoto || null)
         .setFooter({ text: "Mutta Puffs" });
 
-      const answerButtons = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId("0").setLabel("Yes").setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId("1").setLabel("No").setStyle(ButtonStyle.Danger),
-        new ButtonBuilder().setCustomId("2").setLabel("Don't Know").setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId("3").setLabel("Probably").setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId("4").setLabel("Probably Not").setStyle(ButtonStyle.Primary)
-      );
+      await msg.edit({ embeds: [continueEmbed], components: [createAnswerButtons()] });
 
-      await msg.edit({ embeds: [continueEmbed], components: [answerButtons] });
+      // Restart the main answer collector
+      const answerCollector = msg.createMessageComponentCollector({
+        componentType: ComponentType.Button,
+        filter: (i) => i.user.id === user.id,
+        time: 5 * 60_000,
+      });
+
+      answerCollector.on("collect", async (i) => {
+        await i.deferUpdate();
+        const choice = parseInt(i.customId);
+        await aki.answer(choice);
+
+        if (aki.isWin) {
+          answerCollector.stop();
+          return await handleFinalConfirmation(msg, user, aki, region);
+        }
+
+        await msg.edit({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle(`🧞 Guess Game - Step ${aki.currentStep + 1}`)
+              .setDescription(aki.question)
+              .setColor("Gold")
+              .setImage(aki.suggestionPhoto || null)
+              .setFooter({ text: "Mutta Puffs" }),
+          ],
+          components: [createAnswerButtons()],
+        });
+      });
     }
   });
 }
