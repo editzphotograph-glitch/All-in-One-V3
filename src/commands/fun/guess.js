@@ -1,6 +1,7 @@
 const { Blob, File } = require("node:buffer");
 globalThis.File = File;
 globalThis.Blob = Blob;
+
 const { Akinator, AkinatorAnswer } = require("@aqul/akinator-api");
 const {
   EmbedBuilder,
@@ -31,6 +32,25 @@ module.exports = {
 };
 
 async function startCategorySelection(channel, user) {
+  // Check for existing session
+  const activeSession = await AkiSession.findOne({ userId: user.id });
+  if (activeSession && activeSession.lastMessageId) {
+    const existingMsg = await channel.messages
+      .fetch(activeSession.lastMessageId)
+      .catch(() => null);
+
+    if (existingMsg) {
+      const alreadyPlaying = new EmbedBuilder()
+        .setTitle("🧞 Game Already Running")
+        .setDescription(
+          `You already have an ongoing game in <#${activeSession.lastChannelId}>.\nPlease finish or end it before starting a new one.`
+        )
+        .setColor("Red");
+
+      return channel.send({ embeds: [alreadyPlaying] });
+    }
+  }
+
   const select = new StringSelectMenuBuilder()
     .setCustomId("akinator_category")
     .setPlaceholder("Select a category to start!")
@@ -67,9 +87,22 @@ async function startAkinatorGame(msg, user, region) {
   const aki = new Akinator({ region, childMode: false });
   await aki.start();
 
+  await AkiSession.findOneAndUpdate(
+    { userId: user.id },
+    {
+      userId: user.id,
+      username: user.username,
+      category: region,
+      lastChannelId: msg.channel.id,
+      lastMessageId: msg.id,
+      lastGuessed: new Date(),
+    },
+    { upsert: true }
+  );
+
   const getQuestionEmbed = (question, step, img) =>
     new EmbedBuilder()
-      .setTitle("🧞 Guess Game")
+      .setTitle(`🧞 Guess Game - Step ${step}`)
       .setDescription(question)
       .setColor("Gold")
       .setImage(img || null)
@@ -89,21 +122,18 @@ async function startAkinatorGame(msg, user, region) {
     content: "",
   });
 
-  const questionCollector = msg.createMessageComponentCollector({
+  const collector = msg.createMessageComponentCollector({
     componentType: ComponentType.Button,
-    filter: (i) => i.user.id === user.id && ["0", "1", "2", "3", "4"].includes(i.customId),
+    filter: (i) => i.user.id === user.id,
     time: 5 * 60_000,
   });
 
-  questionCollector.on("collect", async (i) => {
+  collector.on("collect", async (i) => {
     await i.deferUpdate();
     const choice = parseInt(i.customId);
     await aki.answer(choice);
 
-    // If Akinator is ready to guess
     if (aki.isWin) {
-      questionCollector.stop(); // stop question collector before confirmation
-
       const guessName = aki.sugestion_name;
       const guessDesc = aki.sugestion_desc;
       const guessImg = aki.sugestion_photo;
@@ -124,7 +154,6 @@ async function startAkinatorGame(msg, user, region) {
       return handleFinalConfirmation(msg, user, aki, region);
     }
 
-    // Continue asking questions
     await msg.edit({
       embeds: [getQuestionEmbed(aki.question, aki.currentStep + 1, aki.suggestionPhoto)],
       components: [answerButtons],
@@ -133,15 +162,14 @@ async function startAkinatorGame(msg, user, region) {
 }
 
 function handleFinalConfirmation(msg, user, aki, region) {
-  const finalCollector = msg.createMessageComponentCollector({
+  const collector = msg.createMessageComponentCollector({
     componentType: ComponentType.Button,
-    filter: (i) =>
-      i.user.id === user.id && (i.customId === "final_yes" || i.customId === "final_no"),
+    filter: (i) => i.user.id === user.id,
     time: 60_000,
     max: 1,
   });
 
-  finalCollector.on("collect", async (i) => {
+  collector.on("collect", async (i) => {
     await i.deferUpdate();
 
     const guessName = aki.sugestion_name;
@@ -160,10 +188,14 @@ function handleFinalConfirmation(msg, user, aki, region) {
           image: guessImg,
           timesGuessed: 1,
           lastGuessed: new Date(),
+          lastChannelId: msg.channel.id,
+          lastMessageId: msg.id,
         });
       } else {
         session.timesGuessed += 1;
         session.lastGuessed = new Date();
+        session.lastChannelId = msg.channel.id;
+        session.lastMessageId = msg.id;
         await session.save();
       }
 
@@ -179,14 +211,14 @@ function handleFinalConfirmation(msg, user, aki, region) {
         .setFooter({ text: "Mutta Puffs" });
 
       const restartButton = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId("restart_aki").setLabel("Restart Game").setStyle(ButtonStyle.Primary)
+        new ButtonBuilder()
+          .setCustomId("restart_aki")
+          .setLabel("Restart Game")
+          .setStyle(ButtonStyle.Primary)
       );
 
       await msg.edit({ embeds: [finalEmbed], components: [restartButton] });
     } else if (i.customId === "final_no") {
-      // Continue game
-      await aki.cancelAnswer(); // go back a question
-
       const continueEmbed = new EmbedBuilder()
         .setTitle("🧞 Guess continues...")
         .setDescription(aki.question)
@@ -203,8 +235,6 @@ function handleFinalConfirmation(msg, user, aki, region) {
       );
 
       await msg.edit({ embeds: [continueEmbed], components: [answerButtons] });
-      // Restart the question collector
-      await startAkinatorGame(msg, user, region);
     }
   });
 }
