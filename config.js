@@ -72,7 +72,7 @@ module.exports = {
 
   GIVEAWAYS: {
     ENABLED: true,
-    REACTION: "<:present:1362988775151767743>",
+    REACTION: "<a:presente:1431187820604559412>",
     START_EMBED: "#FF468A",
     END_EMBED: "#FF468A",
   },
