@@ -1,173 +1,117 @@
-const { Blob, File } = require("node:buffer");
-globalThis.File = File;
-globalThis.Blob = Blob;
+const { EmbedBuilder } = require("discord.js");
+const Canvas = require("canvas");
 
-const {
-  EmbedBuilder,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  ComponentType,
-} = require("discord.js");
-const { Akinator } = require("@aqul/akinator-api");
-const AkiSession = require("../../database/schemas/AkiSession");
+const OWNER_ID = "905880683006799882";
 
-/**
- * @type {import("@structures/Command")}
- */
 module.exports = {
-  name: "guess",
-  description: "Play Guess and try to stump him!",
-  category: "FUN",
+  name: "gay",
+  description: "Check gay percentage of a user",
   cooldown: 10,
-  botPermissions: ["SendMessages", "EmbedLinks"],
-
-  command: {
-    enabled: true,
-  },
+  category: "FUN",
+  botPermissions: ["SendMessages", "EmbedLinks", "AttachFiles"],
+  command: { enabled: true },
   slashCommand: {
     enabled: true,
+    options: [
+      {
+        name: "user",
+        description: "Select a user to check",
+        type: 6,
+        required: false,
+      },
+    ],
   },
 
-  async messageRun(message) {
-    await startAkinatorGame(message, message.author);
+  async messageRun(message, args) {
+    const user = message.mentions.users.first() || message.author;
+
+    // 1. Send processing reply
+    const processing = await message.reply("🏳️‍🌈 Calculating gay percentage... please wait.");
+
+    // 2. Generate final result
+    const result = await generateGayResult(user);
+
+    // 3. Edit the processing message to final result
+    await processing.edit(result);
   },
 
   async interactionRun(interaction) {
-    await startAkinatorGame(interaction, interaction.user);
+    const user = interaction.options.getUser("user") || interaction.user;
+
+    // 1. Defer reply to show "thinking..." (visible only to user)
+    const processing = await interaction.deferReply({ fetchReply: true });
+
+    // 2. Generate final result
+    const result = await generateGayResult(user);
+
+    // 3. Edit deferred reply to final result
+    await interaction.editReply(result);
   },
 };
 
-async function startAkinatorGame(ctx, user, region = "en") {
-  // prevent duplicate games
-  const existing = await AkiSession.findOne({ userId: user.id });
-  if (existing) {
-    return ctx.reply({
-      content: `You already have an ongoing game in <#${existing.channelId}>. Please finish or end it before starting a new one.`,
-      ephemeral: true,
-    });
-  }
+function getQuote(percentage) {
+  if (percentage <= 20) return "😇 • **Not quite flying the rainbow flag yet.**";
+  if (percentage <= 40) return "🌈 • **A bit colorful, testing the waters.**";
+  if (percentage <= 60) return "🏳️‍🌈 • **Halfway there, love yourself!**";
+  if (percentage <= 80) return "🌟 • **Rainbow vibes are strong!**";
+  return "🌈 • **Full rainbow energy!**";
+}
 
-  const aki = new Akinator({ region, childMode: false });
-  await aki.start();
+async function generateGayResult(user) {
+  const isOwner = user.id === OWNER_ID;
+  const percentage = isOwner ? 0 : Math.floor(Math.random() * 101);
 
-  await AkiSession.create({
-    userId: user.id,
-    channelId: ctx.channel.id,
-    region,
-  });
+  const canvas = Canvas.createCanvas(700, 250);
+  const ctx = canvas.getContext("2d");
+
+  const background = await Canvas.loadImage("https://i.ibb.co/H8S5CgW/240-F-337329594-cs-Erl-Hg-S2h0psecwnx-V5t-MTPIp-WCea-D7.jpg");
+  ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
+
+  const avatar = await Canvas.loadImage(user.displayAvatarURL({ extension: "png", size: 512 }));
+  const avatarSize = 180;
+  const avatarX = 50;
+  const avatarY = canvas.height / 2 - avatarSize / 2;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.clip();
+  ctx.drawImage(avatar, avatarX, avatarY, avatarSize, avatarSize);
+  ctx.restore();
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 30px Sans";
+  ctx.fillText(user.displayName, 270, 110);
+
+  ctx.font = "bold 60px Sans";
+  ctx.fillText(`${percentage}%`, 270, 160);
+
+  const barX = 270, barY = 180, barWidth = 350, barHeight = 25;
+  ctx.fillStyle = "#555555";
+  ctx.fillRect(barX, barY, barWidth, barHeight);
+
+  const fillWidth = (barWidth * percentage) / 100;
+  const gradient = ctx.createLinearGradient(barX, barY, barX + barWidth, barY);
+  gradient.addColorStop(0, "#ff0000");
+  gradient.addColorStop(0.25, "#ff7f00");
+  gradient.addColorStop(0.5, "#ffff00");
+  gradient.addColorStop(0.75, "#00ff00");
+  gradient.addColorStop(1, "#0000ff");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(barX, barY, fillWidth, barHeight);
+
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(barX, barY, barWidth, barHeight);
+
+  const buffer = canvas.toBuffer();
 
   const embed = new EmbedBuilder()
-    .setTitle("🧠 Guess Game")
+    .setTitle(`${user.username} is ${percentage}% gay.`)
+    .setDescription(getQuote(percentage))
     .setColor("Random")
-    .setDescription(`**Q:** ${aki.question}`)
-    .setFooter({ text: `Progress: ${aki.progress}%` });
+    .setImage("attachment://gay.png");
 
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId("0").setLabel("Yes").setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId("1").setLabel("No").setStyle(ButtonStyle.Danger),
-    new ButtonBuilder().setCustomId("2").setLabel("I don't know").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId("3").setLabel("Probably").setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId("4").setLabel("Probably not").setStyle(ButtonStyle.Primary)
-  );
-
-  const msg = await ctx.reply({ embeds: [embed], components: [row] });
-
-  const collector = msg.createMessageComponentCollector({
-    componentType: ComponentType.Button,
-    time: 600000,
-  });
-
-  collector.on("collect", async (i) => {
-    if (i.user.id !== user.id)
-      return i.reply({ content: "This game isn't for you.", ephemeral: true });
-
-    await i.deferUpdate().catch(() => {});
-    try {
-      await aki.answer(Number(i.customId));
-
-      if (aki.isWin) {
-        const guessEmbed = new EmbedBuilder()
-          .setTitle("🤔 Is this correct?")
-          .setDescription(
-            `**${aki.sugestion_name}**\n${aki.sugestion_desc}\n\nConfidence: ${aki.progress}%`
-          )
-          .setImage(aki.sugestion_photo)
-          .setColor("Random");
-
-        const finalRow = new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId("final_yes")
-            .setLabel("Yes")
-            .setStyle(ButtonStyle.Success),
-          new ButtonBuilder()
-            .setCustomId("final_no")
-            .setLabel("No, start new game")
-            .setStyle(ButtonStyle.Danger)
-        );
-
-        await msg.edit({ embeds: [guessEmbed], components: [finalRow] });
-
-        const confirm = await msg
-          .awaitMessageComponent({
-            componentType: ComponentType.Button,
-            time: 30000,
-          })
-          .catch(() => null);
-
-        if (!confirm) {
-          await msg.edit({
-            content: "⏱️ Time's up! Game ended.",
-            embeds: [],
-            components: [],
-          });
-          await AkiSession.deleteOne({ userId: user.id });
-          return;
-        }
-
-        if (confirm.customId === "final_yes") {
-          await confirm.deferUpdate().catch(() => {});
-          await msg.edit({
-            content: `🎉 Great! Guessed it right.`,
-            embeds: [],
-            components: [],
-          });
-          await AkiSession.deleteOne({ userId: user.id });
-          return;
-        }
-
-        if (confirm.customId === "final_no") {
-          await confirm.deferUpdate().catch(() => {});
-          await msg.edit({
-            content: "🔄 Restarting game with same category...",
-            embeds: [],
-            components: [],
-          });
-          await AkiSession.deleteOne({ userId: user.id });
-          return startAkinatorGame(ctx, user, region);
-        }
-      } else {
-        const newEmbed = new EmbedBuilder()
-          .setTitle("🧠 Guess Game")
-          .setColor("Random")
-          .setDescription(`**Q:** ${aki.question}`)
-          .setFooter({ text: `Progress: ${aki.progress}%` });
-
-        await msg.edit({ embeds: [newEmbed], components: [row] });
-      }
-    } catch (err) {
-      console.error(err);
-      await msg.edit({
-        content: "⚠️ Guess failed to process your answer. The game ended.",
-        embeds: [],
-        components: [],
-      });
-      await AkiSession.deleteOne({ userId: user.id });
-      collector.stop();
-    }
-  });
-
-  collector.on("end", async () => {
-    await AkiSession.deleteOne({ userId: user.id });
-  });
+  return { embeds: [embed], files: [{ attachment: buffer, name: "gay.png" }] };
 }
