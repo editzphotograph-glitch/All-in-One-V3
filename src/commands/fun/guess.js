@@ -32,7 +32,6 @@ module.exports = {
 };
 
 async function startCategorySelection(channel, user) {
-
   const select = new StringSelectMenuBuilder()
     .setCustomId("akinator_category")
     .setPlaceholder("Select a category to start!")
@@ -53,9 +52,9 @@ async function startCategorySelection(channel, user) {
 
   const collector = msg.createMessageComponentCollector({
     componentType: ComponentType.StringSelect,
-    time: 30_000,
     filter: (i) => i.user.id === user.id,
     max: 1,
+    time: 30_000,
   });
 
   collector.on("collect", async (i) => {
@@ -163,6 +162,7 @@ async function startAkinatorGame(msg, user, region) {
       await final.deferUpdate();
 
       if (final.customId === "final_yes") {
+        // Save result
         let session = await AkiSession.findOne({ userId: user.id, resultName: guessName });
         if (!session) {
           session = await AkiSession.create({
@@ -219,10 +219,10 @@ async function startAkinatorGame(msg, user, region) {
         }
 
         isGameOver = true;
-        await AkiSession.deleteOne({ userId: user.id });
-      } else {
-        // User said No → continue game with next question and image
-        continue;
+      } else if (final.customId === "final_no") {
+        // User said No → continue game correctly
+        await aki.back(); // moves the game back one step so next iteration shows next question
+        continue; 
       }
     }
   }
