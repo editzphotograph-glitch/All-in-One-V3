@@ -118,7 +118,9 @@ async function startAkinatorGame(msg, user, region) {
       .setImage(img || null)
       .setFooter({ text: "Mutta Puffs" });
 
-  while (true) {
+  let isGameOver = false;
+
+  while (!isGameOver) {
     // Show current question
     await msg.edit({
       embeds: [getQuestionEmbed(aki.question, aki.currentStep + 1, aki.suggestionPhoto)],
@@ -176,7 +178,6 @@ async function startAkinatorGame(msg, user, region) {
       await final.deferUpdate();
 
       if (final.customId === "final_yes") {
-        // Save session
         let session = await AkiSession.findOne({ userId: user.id, resultName: guessName });
         if (!session) {
           session = await AkiSession.create({
@@ -228,13 +229,13 @@ async function startAkinatorGame(msg, user, region) {
 
         if (restart) {
           await restart.deferUpdate();
-          await startCategorySelection(msg.channel, user); // restart
+          await startCategorySelection(msg.channel, user); // restart new game
         }
 
-        break;
+        isGameOver = true;
       } else {
         // User said No → continue game
-        continue;
+        continue; // will fetch next question automatically
       }
     }
   }
