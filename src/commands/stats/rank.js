@@ -58,7 +58,6 @@ async function getRankCard(member, settings) {
 
   try {
     const rankCard = new Canvas.RankCard()
-      .setAddon("xp", true)
       .setAddon("rank", true)
       .setAddon("color", true)
       .setAvatar(user.displayAvatarURL({ extension: "png", size: 256 }))
@@ -81,7 +80,7 @@ async function getRankCard(member, settings) {
       .setColor("rank", "#B993D6")
 
       // Use image background with subtle gradient overlay look
-      .setBackground("https://i.imgur.com/aYl2kIU.jpeg") // gradient-style image
+      .setBackground("https://i.ibb.co/dsjZY6Q9/images-6.jpg") // gradient-style image
       .setColor("overlay", "rgba(0,0,0,0.35)") // adds subtle dark overlay
       .setColor("avatar", EMBED_COLORS.BOT_EMBED); // soft frame tint
 
