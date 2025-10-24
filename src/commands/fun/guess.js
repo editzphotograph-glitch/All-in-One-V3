@@ -136,6 +136,8 @@ async function startAkinatorGame(msg, user, region) {
 
     if (!interaction) {
       await msg.edit({ content: "Game timed out.", components: [] });
+  // Clear session
+      await AkiSession.deleteOne({ userId: user.id }).catch(() => {});
       break;
     }
 
@@ -172,6 +174,7 @@ async function startAkinatorGame(msg, user, region) {
 
       if (!final) {
         await msg.edit({ content: "Game ended due to no response.", components: [] });
+        await AkiSession.deleteOne({ userId: user.id }).catch(() => {});
         break;
       }
 
@@ -233,6 +236,7 @@ async function startAkinatorGame(msg, user, region) {
         }
 
         isGameOver = true;
+        await AkiSession.deleteOne({ userId: user.id }).catch(() => {});
       } else {
         // User said No → continue game
         continue; // will fetch next question automatically
