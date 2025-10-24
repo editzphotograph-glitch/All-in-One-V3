@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@aqul/akinator-api": "^3.0.1",
+    "@helpr/modern-rank-card": "^1.0.2",
     "@lavaclient/queue": "^2.1.1",
     "@lavaclient/spotify": "^3.1.0",
     "@vitalets/google-translate-api": "^9.2.0",
