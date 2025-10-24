@@ -25,26 +25,32 @@ module.exports = {
   async messageRun(message, args) {
     const user = message.mentions.users.first() || message.author;
 
-    // 1. Send processing reply
-    const processing = await message.reply("🏳️‍🌈 Calculating gay percentage... please wait.");
+    // 1. Send processing message as a reply to the user's message
+    const processing = await message.reply({
+      content: "🏳️‍🌈 Calculating gay percentage... please wait.",
+      allowedMentions: { repliedUser: false },
+    });
 
     // 2. Generate final result
     const result = await generateGayResult(user);
 
-    // 3. Edit the processing message to final result
-    await processing.edit(result);
+    // 3. Delete the processing message
+    await processing.delete().catch(() => null);
+
+    // 4. Send the final embed as a reply to the user's message
+    await message.reply({ ...result, allowedMentions: { repliedUser: false } });
   },
 
   async interactionRun(interaction) {
     const user = interaction.options.getUser("user") || interaction.user;
 
-    // 1. Defer reply to show "thinking..." (visible only to user)
-    const processing = await interaction.deferReply({ fetchReply: true });
+    // 1. Defer reply to prevent timeout
+    await interaction.deferReply();
 
     // 2. Generate final result
     const result = await generateGayResult(user);
 
-    // 3. Edit deferred reply to final result
+    // 3. Edit deferred reply with final result
     await interaction.editReply(result);
   },
 };
@@ -64,10 +70,14 @@ async function generateGayResult(user) {
   const canvas = Canvas.createCanvas(700, 250);
   const ctx = canvas.getContext("2d");
 
-  const background = await Canvas.loadImage("https://i.ibb.co/H8S5CgW/240-F-337329594-cs-Erl-Hg-S2h0psecwnx-V5t-MTPIp-WCea-D7.jpg");
+  const background = await Canvas.loadImage(
+    "https://i.ibb.co/H8S5CgW/240-F-337329594-cs-Erl-Hg-S2h0psecwnx-V5t-MTPIp-WCea-D7.jpg"
+  );
   ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
 
-  const avatar = await Canvas.loadImage(user.displayAvatarURL({ extension: "png", size: 512 }));
+  const avatar = await Canvas.loadImage(
+    user.displayAvatarURL({ extension: "png", size: 512 })
+  );
   const avatarSize = 180;
   const avatarX = 50;
   const avatarY = canvas.height / 2 - avatarSize / 2;
